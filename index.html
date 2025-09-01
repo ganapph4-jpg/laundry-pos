@@ -1,3 +1,21 @@
+Got it. You want to simplify the process and rely solely on the automatic deployment from GitHub, so the manual "Update Site" button is no longer needed. That makes perfect sense and keeps the interface cleaner.
+
+I have removed the "Check for Site Updates" button from the Owner Settings and the corresponding JavaScript function. Your workflow will now be:
+
+1.  Edit your code.
+2.  Commit the changes to GitHub.
+3.  Cloudflare will automatically deploy the new version in 1-2 minutes.
+4.  Do a Hard Refresh (`Ctrl+Shift+R`) on your website to see the changes.
+
+The Cloudflare Worker and Deploy Hook you created are now no longer used by the application. You can safely delete them from your Cloudflare account to keep things tidy, or just leave them in case you ever want to add the button back in the future.
+
+---
+
+### **Complete `WORKING POS.html` File (Update Button Removed)**
+
+Here is the complete, final file. You can copy this entire code block and use it to replace the content of the file in your GitHub repository.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -351,12 +369,6 @@
                 </div>
                 <div class="p-4 border border-red-300 bg-red-50 rounded"><h3 class="text-lg font-semibold mb-3 text-red-800">Data Management</h3><div class="space-y-4">
                     <div><button onclick="backupData()" class="bg-green-600 text-white px-4 py-2 rounded w-full hover:bg-green-700">Backup All Data to File</button><p class="text-xs text-gray-600 mt-1">Saves a local copy of all sales, services, and settings to a JSON file.</p></div>
-                    <!-- ### NEW UPDATE BUTTON ### -->
-                    <div>
-                        <button onclick="checkForUpdates()" class="bg-cyan-600 text-white px-4 py-2 rounded w-full hover:bg-cyan-700">Check for Site Updates</button>
-                        <p class="text-xs text-gray-600 mt-1">Pulls the latest version of the POS from GitHub and reloads the page.</p>
-                    </div>
-                    <!-- ######################## -->
                     <div><button onclick="triggerRestore()" class="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700">Restore Data from File</button><p class="text-xs text-gray-600 mt-1">WARNING: This will overwrite all current data in Firestore.</p></div><hr>
                     <div><button onclick="confirmTransactionalReset()" class="bg-yellow-500 text-white px-4 py-2 rounded w-full hover:bg-yellow-600">Reset Sales Data</button><p class="text-xs text-gray-600 mt-1">Deletes all sales records and resets the OR number. Services and Settings are NOT affected.</p></div>
                     <div><button onclick="confirmMasterReset()" class="bg-red-600 text-white px-4 py-2 rounded w-full hover:bg-red-700">Factory Reset</button><p class="text-xs text-gray-600 mt-1">Deletes EVERYTHING from Firestore. The app will return to its default state.</p></div>
@@ -2595,59 +2607,6 @@
             } else { Swal.fire('SMS Failed', `Server responded with status ${response.status}.`, 'error'); }
         } catch (error) { Swal.fire('SMS Error', `An error occurred: ${error.message}.`, 'error'); }
         finally { showLoading(false); }
-    }
-    
-    // ### NEW ### Function to trigger site update via Cloudflare Worker
-    async function checkForUpdates() {
-        const { isConfirmed } = await Swal.fire({
-            title: 'Update Site?',
-            text: "This will fetch the latest version of the POS system. The page will reload after triggering the update.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Yes, Update Now!'
-        });
-
-        if (isConfirmed) {
-            showLoading(true, "Sending update signal...");
-
-            // ================== ⚠️ IMPORTANT ⚠️ ==================
-            //      Replace these two values below with
-            //       YOUR Worker URL and Secret Token
-            // ====================================================
-            const workerUrl = 'https://pos-update-trigger.your-name.workers.dev'; // <--- ❗ REPLACE THIS
-            const secretToken = 'rasthaman123';                   // <--- ❗ REPLACE THIS
-
-            try {
-                const response = await fetch(workerUrl, {
-                    method: 'POST',
-                    headers: {
-                        'X-Auth-Token': secretToken
-                    }
-                });
-
-                if (response.ok) {
-                    await Swal.fire({
-                        title: 'Update Started!',
-                        text: 'The new version is being deployed. The page will reload in 10 seconds to apply the changes.',
-                        icon: 'success',
-                        timer: 10000,
-                        timerProgressBar: true,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        }
-                    });
-                    location.reload();
-                } else {
-                    const errorText = await response.text();
-                    throw new Error(errorText);
-                }
-            } catch (error) {
-                console.error("Update failed:", error);
-                Swal.fire('Error', `Could not trigger the update. Please check the console or try again later. Error: ${error.message}`, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
     }
 
     // --- App Initializer ---
