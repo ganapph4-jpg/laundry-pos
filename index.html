@@ -1,21 +1,3 @@
-Got it. You want to simplify the process and rely solely on the automatic deployment from GitHub, so the manual "Update Site" button is no longer needed. That makes perfect sense and keeps the interface cleaner.
-
-I have removed the "Check for Site Updates" button from the Owner Settings and the corresponding JavaScript function. Your workflow will now be:
-
-1.  Edit your code.
-2.  Commit the changes to GitHub.
-3.  Cloudflare will automatically deploy the new version in 1-2 minutes.
-4.  Do a Hard Refresh (`Ctrl+Shift+R`) on your website to see the changes.
-
-The Cloudflare Worker and Deploy Hook you created are now no longer used by the application. You can safely delete them from your Cloudflare account to keep things tidy, or just leave them in case you ever want to add the button back in the future.
-
----
-
-### **Complete `WORKING POS.html` File (Update Button Removed)**
-
-Here is the complete, final file. You can copy this entire code block and use it to replace the content of the file in your GitHub repository.
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
