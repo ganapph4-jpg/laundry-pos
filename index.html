@@ -234,16 +234,57 @@
                         </div>
                         <button onclick="generateExcelReport()" class="bg-teal-600 text-white px-4 py-2 rounded hover:bg-teal-700 w-full">Export Detailed Report (Excel)</button>
                     </div>
+                    <!-- ### NEW PROFESSIONAL MONTHLY REPORT SECTION ### -->
                     <div class="border-t border-purple-200 pt-4">
-                        <h5 class="font-semibold mb-2">Monthly Performance</h5>
-                        <button onclick="toggleMonthlyReport()" id="monthly-report-btn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 w-full">Generate Current Month's Report</button>
+                        <h5 class="font-semibold mb-2">Professional Monthly Report</h5>
+                        <div class="flex gap-2 mb-2">
+                            <input type="month" id="reportMonth" class="border p-2 w-full">
+                            <button onclick="generateNewMonthlyReport()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 whitespace-nowrap">Generate Report</button>
+                        </div>
                         <div id="monthly-report-output" class="mt-4 space-y-6 hidden">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="bg-purple-50 p-4 rounded-lg border border-purple-200"><h5 class="font-bold text-purple-800 mb-2">Monthly Overview</h5><div class="space-y-3"><div><p class="text-xs text-gray-500">Total Sales</p><p id="monthlyTotalSales" class="text-2xl font-bold"></p></div><div><p class="text-xs text-gray-500">Total Orders</p><p id="monthlyTotalOrders" class="text-2xl font-bold"></p></div><div><p class="text-xs text-gray-500">Average Sale Value</p><p id="monthlyAvgSale" class="text-2xl font-bold"></p></div></div></div>
-                                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200"><h5 class="font-bold text-gray-800 mb-2">Performance vs.</h5><div class="space-y-3"><div><p class="text-xs text-gray-500">Previous Month</p><p id="vsPrevMonth" class="font-semibold"></p></div><div><p class="text-xs text-gray-500">Same Month Last Year</p><p id="vsPrevYear" class="font-semibold"></p></div></div></div>
+                            <!-- Report Title -->
+                            <h4 id="monthly-report-title" class="text-xl font-bold text-purple-900 text-center"></h4>
+
+                            <!-- KPIs -->
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+                                <div class="bg-green-100 p-3 rounded-lg border border-green-200"><p class="text-xs font-medium text-green-800">Total Collected Revenue</p><p id="monthlyTotalCollected" class="text-2xl font-bold text-green-900"></p></div>
+                                <div class="bg-blue-100 p-3 rounded-lg border border-blue-200"><p class="text-xs font-medium text-blue-800">Total Sales Value</p><p id="monthlyTotalSales" class="text-2xl font-bold text-blue-900"></p></div>
+                                <div class="bg-yellow-100 p-3 rounded-lg border border-yellow-200"><p class="text-xs font-medium text-yellow-800">Net (Collected vs Sales)</p><p id="monthlyNet" class="text-2xl font-bold text-yellow-900"></p></div>
+                                <div class="bg-indigo-100 p-3 rounded-lg border border-indigo-200"><p class="text-xs font-medium text-indigo-800">Total Orders</p><p id="monthlyTotalOrders" class="text-2xl font-bold text-indigo-900"></p></div>
+                                <div class="bg-gray-100 p-3 rounded-lg border border-gray-200 col-span-2 md:col-span-1"><p class="text-xs font-medium text-gray-800">Average Sale Value</p><p id="monthlyAvgSale" class="text-2xl font-bold text-gray-900"></p></div>
                             </div>
+
+                            <!-- Analysis and Insights -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-white p-4 rounded-lg border">
+                                    <h5 class="font-bold text-purple-800 mb-2">Performance vs.</h5>
+                                    <div class="space-y-3">
+                                        <div><p class="text-xs text-gray-500">Previous Month (Sales)</p><p id="vsPrevMonth" class="font-semibold"></p></div>
+                                        <div><p class="text-xs text-gray-500">Same Month Last Year (Sales)</p><p id="vsPrevYear" class="font-semibold"></p></div>
+                                    </div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg border">
+                                    <h5 class="font-bold text-purple-800 mb-2">Weekly Performance</h5>
+                                    <div class="space-y-3">
+                                        <div><p class="text-xs text-gray-500">Busiest Day of the Week</p><p id="busiestDay" class="font-semibold text-green-700"></p></div>
+                                        <div><p class="text-xs text-gray-500">Quietest Day of the Week</p><p id="quietestDay" class="font-semibold text-red-700"></p></div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div><h5 class="font-bold text-purple-800 mb-2">Daily Sales Chart</h5><canvas id="monthlySalesChart"></canvas></div>
-                            <div><h5 class="font-bold text-purple-800 mb-2">Top Selling Services</h5><div id="top-services-list" class="space-y-2"></div></div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-white p-4 rounded-lg border">
+                                    <h5 class="font-bold text-purple-800 mb-2">Top Selling Services</h5>
+                                    <div id="top-services-list" class="space-y-2"></div>
+                                </div>
+                                <div class="bg-white p-4 rounded-lg border">
+                                    <h5 class="font-bold text-purple-800 mb-2">Top Customers</h5>
+                                    <div id="top-customers-list" class="space-y-2"></div>
+                                </div>
+                            </div>
+
                             <div>
                                 <h5 class="font-bold text-purple-800 mb-2">Daily Performance Breakdown</h5>
                                 <div id="daily-breakdown-table" class="max-h-64 overflow-y-auto border rounded"></div>
@@ -505,6 +546,7 @@
         allElements.reviewDateEl.value = dayjs().tz(TIMEZONE).format("YYYY-MM-DD");
         document.getElementById('reportStartDate').value = dayjs().tz(TIMEZONE).startOf('month').format('YYYY-MM-DD');
         document.getElementById('reportEndDate').value = dayjs().tz(TIMEZONE).endOf('month').format('YYYY-MM-DD');
+        document.getElementById('reportMonth').value = dayjs().tz(TIMEZONE).format('YYYY-MM'); // Sets default month for new report
 
         showView('pos-view');
 
@@ -2122,17 +2164,6 @@
         });
     }
 
-    async function toggleMonthlyReport() {
-        const container = document.getElementById('monthly-report-output'), button = document.getElementById('monthly-report-btn');
-        if (container.classList.contains('hidden')) {
-            button.textContent = 'Generating...'; button.disabled = true; showLoading(true);
-            await generateMonthlyReport();
-            container.classList.remove('hidden'); button.textContent = 'Hide Report'; showLoading(false); button.disabled = false;
-        } else {
-            container.classList.add('hidden'); button.textContent = "Generate Current Month's Report";
-        }
-    }
-
     // UPDATED to fetch data from Firestore for reports
     async function getSalesDataForPeriod(startDate, endDate) {
         const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
@@ -2202,30 +2233,144 @@
             Toast.fire({ icon: 'success', title: 'Report generated!' });
         } catch (error) { showLoading(false); console.error("Excel report failed:", error); Swal.fire('Error', 'Failed to generate report.', 'error'); }
     }
+    
+    // This is the new master function that gets the month from the input and calls the report generator.
+    async function generateNewMonthlyReport() {
+        const reportMonthInput = document.getElementById('reportMonth');
+        if (!reportMonthInput.value) {
+            return Swal.fire('Error', 'Please select a month and year to generate a report.', 'warning');
+        }
+        
+        const container = document.getElementById('monthly-report-output');
+        showLoading(true, `Generating report for ${dayjs(reportMonthInput.value).format("MMMM YYYY")}...`);
+        
+        await generateMonthlyReport(reportMonthInput.value); // Pass the selected month
+        
+        container.classList.remove('hidden');
+        showLoading(false);
+    }
 
-    async function generateMonthlyReport() {
-        const now = dayjs().tz(TIMEZONE), currentMonthStart = now.startOf('month'), currentMonthEnd = now.endOf('month'), prevMonthStart = now.subtract(1, 'month').startOf('month'), prevMonthEnd = now.subtract(1, 'month').endOf('month'), prevYearMonthStart = now.subtract(1, 'year').startOf('month'), prevYearMonthEnd = now.subtract(1, 'year').endOf('month');
-        const [currentMonthSales, prevMonthSales, prevYearMonthSales, collectedDataMap] = await Promise.all([ getSalesDataForPeriod(currentMonthStart, currentMonthEnd), getSalesDataForPeriod(prevMonthStart, prevMonthEnd), getSalesDataForPeriod(prevYearMonthStart, prevYearMonthEnd), getCollectedDataForPeriod(currentMonthStart, currentMonthEnd) ]);
-        const currentTotalSales = currentMonthSales.reduce((s,t)=>s+t.total,0), currentTotalOrders = currentMonthSales.length, currentAvgSale = currentTotalOrders > 0 ? currentTotalSales/currentTotalOrders : 0;
-        document.getElementById('monthlyTotalSales').textContent = `₱${currentTotalSales.toFixed(2)}`; document.getElementById('monthlyTotalOrders').textContent = currentTotalOrders; document.getElementById('monthlyAvgSale').textContent = `₱${currentAvgSale.toFixed(2)}`;
-        const prevMonthTotalSales = prevMonthSales.reduce((s,t)=>s+t.total,0), prevYearMonthTotalSales = prevYearMonthSales.reduce((s,t)=>s+t.total,0);
-        const renderComparison = (c,p) => { if(p===0) return `<span class="text-gray-500">N/A</span>`; const d=((c-p)/p)*100; return `<span class="${d>=0?'text-green-600':'text-red-600'}">${d>=0?'▲':'▼'} ${Math.abs(d).toFixed(1)}%</span>`; };
-        document.getElementById('vsPrevMonth').innerHTML = renderComparison(currentTotalSales, prevMonthTotalSales); document.getElementById('vsPrevYear').innerHTML = renderComparison(currentTotalSales, prevYearMonthTotalSales);
-        const daysInMonth=now.daysInMonth(),dailySales=new Array(daysInMonth).fill(0),chartLabels=Array.from({length:daysInMonth},(_,i)=>i+1);
-        currentMonthSales.forEach(tx=>{dailySales[dayjs(tx.time).tz(TIMEZONE).date()-1]+=tx.total;});
-        if(monthlyChartInstance) monthlyChartInstance.destroy();
-        monthlyChartInstance=new Chart(document.getElementById('monthlySalesChart').getContext('2d'),{type:'line',data:{labels:chartLabels,datasets:[{label:'Daily Sales (₱)',data:dailySales,borderColor:'rgb(124,58,237)',backgroundColor:'rgba(124,58,237,0.1)',tension:0.1,fill:true}]},options:{scales:{y:{beginAtZero:true}}}});
-        const serviceRevenue={},topServicesContainer=document.getElementById('top-services-list');
-        currentMonthSales.forEach(tx=>tx.cart.forEach(item=>{const l=item.label.split(' (')[0];if(!serviceRevenue[l])serviceRevenue[l]=0;serviceRevenue[l]+=item.price;}));
-        const topServices=Object.entries(serviceRevenue).sort((a,b)=>b[1]-a[1]).slice(0,5);
-        topServicesContainer.innerHTML=topServices.length>0?topServices.map(([l,r])=>`<div class="flex justify-between items-center p-2 bg-gray-50 rounded"><span>${l}</span><span class="font-semibold">₱${r.toFixed(2)}</span></div>`).join(''):`<p class="text-center text-gray-500 p-2">No services sold.</p>`;
-        const dailyBreakdown={},tableContainer=document.getElementById('daily-breakdown-table');
-        for(let i=1;i<=daysInMonth;i++)dailyBreakdown[i]={sales:0,orders:0,collected:0};
-        currentMonthSales.forEach(tx=>{const d=dayjs(tx.time).tz(TIMEZONE).date();dailyBreakdown[d].sales+=tx.total;dailyBreakdown[d].orders++;});
-        for(const[dateKey,amount] of Object.entries(collectedDataMap)){const d=dayjs(dateKey).date();if(dailyBreakdown[d])dailyBreakdown[d].collected=amount;}
-        let tableHtml=`<table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th class="px-4 py-2">Date</th><th class="px-4 py-2 text-right">Orders</th><th class="px-4 py-2 text-right">Total Sales</th><th class="px-4 py-2 text-right">Collected (Cash)</th></tr></thead><tbody>`;
-        for(let i=daysInMonth;i>=1;i--){tableHtml+=`<tr class="bg-white border-b"><td class="px-4 py-2 font-medium">${now.format('MMM')} ${i}</td><td class="px-4 py-2 text-right">${dailyBreakdown[i].orders}</td><td class="px-4 py-2 text-right">₱${dailyBreakdown[i].sales.toFixed(2)}</td><td class="px-4 py-2 text-right font-semibold">₱${dailyBreakdown[i].collected.toFixed(2)}</td></tr>`;}
-        tableHtml+='</tbody></table>';tableContainer.innerHTML=tableHtml;
+    // This is the new, upgraded report generation logic.
+    async function generateMonthlyReport(selectedMonth) { // Now accepts a month parameter
+        const now = dayjs(selectedMonth).tz(TIMEZONE);
+        const currentMonthStart = now.startOf('month');
+        const currentMonthEnd = now.endOf('month');
+        const prevMonthStart = now.subtract(1, 'month').startOf('month');
+        const prevMonthEnd = now.subtract(1, 'month').endOf('month');
+        const prevYearMonthStart = now.subtract(1, 'year').startOf('month');
+        const prevYearMonthEnd = now.subtract(1, 'year').endOf('month');
+
+        // Update report title
+        document.getElementById('monthly-report-title').textContent = `Monthly Report for ${now.format("MMMM YYYY")}`;
+
+        const [currentMonthSales, prevMonthSales, prevYearMonthSales, collectedDataMap] = await Promise.all([
+            getSalesDataForPeriod(currentMonthStart, currentMonthEnd),
+            getSalesDataForPeriod(prevMonthStart, prevMonthEnd),
+            getSalesDataForPeriod(prevYearMonthStart, prevYearMonthEnd),
+            getCollectedDataForPeriod(currentMonthStart, currentMonthEnd)
+        ]);
+
+        // --- KPI Calculations ---
+        const totalCollected = Object.values(collectedDataMap).reduce((sum, val) => sum + val, 0);
+        const currentTotalSales = currentMonthSales.reduce((s, t) => s + t.total, 0);
+        const currentTotalOrders = currentMonthSales.length;
+        const currentAvgSale = currentTotalOrders > 0 ? currentTotalSales / currentTotalOrders : 0;
+        const netProfit = totalCollected - currentTotalSales;
+
+        document.getElementById('monthlyTotalCollected').textContent = `₱${totalCollected.toFixed(2)}`;
+        document.getElementById('monthlyTotalSales').textContent = `₱${currentTotalSales.toFixed(2)}`;
+        document.getElementById('monthlyNet').textContent = `₱${netProfit.toFixed(2)}`;
+        document.getElementById('monthlyNet').className = `text-2xl font-bold ${netProfit >= 0 ? 'text-green-900' : 'text-red-900'}`;
+        document.getElementById('monthlyTotalOrders').textContent = currentTotalOrders.toLocaleString();
+        document.getElementById('monthlyAvgSale').textContent = `₱${currentAvgSale.toFixed(2)}`;
+
+        // --- Comparison Calculations ---
+        const prevMonthTotalSales = prevMonthSales.reduce((s, t) => s + t.total, 0);
+        const prevYearMonthTotalSales = prevYearMonthSales.reduce((s, t) => s + t.total, 0);
+        const renderComparison = (c, p) => {
+            if (p === 0) return `<span class="text-gray-500">N/A (No prior data)</span>`;
+            const diff = ((c - p) / p) * 100;
+            return `<span class="${diff >= 0 ? 'text-green-600' : 'text-red-600'}">${diff >= 0 ? '▲' : '▼'} ${Math.abs(diff).toFixed(1)}%</span> vs ₱${p.toFixed(2)}`;
+        };
+        document.getElementById('vsPrevMonth').innerHTML = renderComparison(currentTotalSales, prevMonthTotalSales);
+        document.getElementById('vsPrevYear').innerHTML = renderComparison(currentTotalSales, prevYearMonthTotalSales);
+
+        // --- Weekly Performance Analysis ---
+        const dayOfWeekSales = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 }; // Sun-Sat
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        currentMonthSales.forEach(tx => {
+            const dayIndex = dayjs(tx.time).tz(TIMEZONE).day();
+            dayOfWeekSales[dayIndex] += tx.total;
+        });
+        let busiestDayIndex = -1, quietestDayIndex = -1;
+        let maxSales = -1, minSales = Infinity;
+        for (let i = 0; i < 7; i++) {
+            if (dayOfWeekSales[i] > maxSales) { maxSales = dayOfWeekSales[i]; busiestDayIndex = i; }
+            if (dayOfWeekSales[i] < minSales) { minSales = dayOfWeekSales[i]; quietestDayIndex = i; }
+        }
+        document.getElementById('busiestDay').textContent = dayNames[busiestDayIndex];
+        document.getElementById('quietestDay').textContent = dayNames[quietestDayIndex];
+
+        // --- Chart Generation ---
+        const daysInMonth = now.daysInMonth();
+        const dailySales = new Array(daysInMonth).fill(0);
+        const chartLabels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+        currentMonthSales.forEach(tx => { dailySales[dayjs(tx.time).tz(TIMEZONE).date() - 1] += tx.total; });
+        if (monthlyChartInstance) monthlyChartInstance.destroy();
+        monthlyChartInstance = new Chart(document.getElementById('monthlySalesChart').getContext('2d'), {
+            type: 'line',
+            data: { labels: chartLabels, datasets: [{ label: 'Daily Sales (₱)', data: dailySales, borderColor: 'rgb(124,58,237)', backgroundColor: 'rgba(124,58,237,0.1)', tension: 0.1, fill: true }] },
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+
+        // --- Top Services Analysis ---
+        const serviceRevenue = {};
+        currentMonthSales.forEach(tx => tx.cart.forEach(item => {
+            const label = item.label.split(' (')[0];
+            if (!serviceRevenue[label]) serviceRevenue[label] = { revenue: 0, count: 0 };
+            serviceRevenue[label].revenue += item.price;
+            serviceRevenue[label].count++;
+        }));
+        const topServices = Object.entries(serviceRevenue).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
+        const topServicesContainer = document.getElementById('top-services-list');
+        topServicesContainer.innerHTML = topServices.length > 0 ? topServices.map(([label, data]) => {
+            const percentage = currentTotalSales > 0 ? (data.revenue / currentTotalSales * 100).toFixed(1) : 0;
+            return `<div class="p-2 bg-gray-50 rounded">
+                        <div class="flex justify-between items-center font-semibold"><span>${label}</span><span>₱${data.revenue.toFixed(2)}</span></div>
+                        <div class="text-xs text-gray-500 flex justify-between"><span>${data.count} orders</span><span>${percentage}% of Sales</span></div>
+                    </div>`;
+        }).join('') : `<p class="text-center text-gray-500 p-2">No services sold this month.</p>`;
+
+        // --- Top Customers Analysis ---
+        const customerSpending = {};
+        currentMonthSales.forEach(tx => {
+            if (tx.name) {
+                if (!customerSpending[tx.name]) customerSpending[tx.name] = 0;
+                customerSpending[tx.name] += tx.total;
+            }
+        });
+        const topCustomers = Object.entries(customerSpending).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const topCustomersContainer = document.getElementById('top-customers-list');
+        topCustomersContainer.innerHTML = topCustomers.length > 0 ? topCustomers.map(([name, total]) =>
+            `<div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                <span class="font-semibold">${name}</span>
+                <span>₱${total.toFixed(2)}</span>
+            </div>`
+        ).join('') : `<p class="text-center text-gray-500 p-2">No customer data for this month.</p>`;
+
+
+        // --- Daily Breakdown Table ---
+        const dailyBreakdown = {};
+        const tableContainer = document.getElementById('daily-breakdown-table');
+        for (let i = 1; i <= daysInMonth; i++) dailyBreakdown[i] = { sales: 0, orders: 0, collected: 0 };
+        currentMonthSales.forEach(tx => { const d = dayjs(tx.time).tz(TIMEZONE).date(); dailyBreakdown[d].sales += tx.total; dailyBreakdown[d].orders++; });
+        for (const [dateKey, amount] of Object.entries(collectedDataMap)) { const d = dayjs(dateKey).date(); if (dailyBreakdown[d]) dailyBreakdown[d].collected = amount; }
+        let tableHtml = `<table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th class="px-4 py-2">Date</th><th class="px-4 py-2 text-right">Orders</th><th class="px-4 py-2 text-right">Total Sales</th><th class="px-4 py-2 text-right">Collected (Cash)</th></tr></thead><tbody>`;
+        for (let i = daysInMonth; i >= 1; i--) {
+            tableHtml += `<tr class="bg-white border-b"><td class="px-4 py-2 font-medium">${now.format('MMM')} ${i}</td><td class="px-4 py-2 text-right">${dailyBreakdown[i].orders}</td><td class="px-4 py-2 text-right">₱${dailyBreakdown[i].sales.toFixed(2)}</td><td class="px-4 py-2 text-right font-semibold">₱${dailyBreakdown[i].collected.toFixed(2)}</td></tr>`;
+        }
+        tableHtml += '</tbody></table>';
+        tableContainer.innerHTML = tableHtml;
     }
 
     async function backupData() {
@@ -2509,4 +2654,5 @@
     document.addEventListener('DOMContentLoaded', promptStaffLogin);
   </script>
 </body>
-</html>```
+</html>
+```
