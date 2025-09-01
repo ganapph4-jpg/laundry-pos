@@ -308,7 +308,18 @@
                     <div class="space-y-3"><div><label for="currentPassword" class="block font-medium">Current Owner Password</label><input id="currentPassword" type="password" class="border p-2 w-full mt-1"></div><div><label for="newPassword" class="block font-medium">New Owner Password</label><input id="newPassword" type="password" oninput="updatePasswordStrength()" class="border p-2 w-full mt-1"></div><!-- NEW: Password Strength Indicator --><div><div id="password-strength-indicator"></div></div><div><label for="confirmPassword" class="block font-medium">Confirm New Owner Password</label><input id="confirmPassword" type="password" class="border p-2 w-full mt-1"></div></div>
                     <button onclick="savePassword()" class="bg-blue-600 text-white px-4 py-2 rounded mt-4 w-full hover:bg-blue-700">Change Owner Password</button>
                 </div>
-                <div class="p-4 border border-red-300 bg-red-50 rounded"><h3 class="text-lg font-semibold mb-3 text-red-800">Data Management</h3><div class="space-y-4"><div><button onclick="backupData()" class="bg-green-600 text-white px-4 py-2 rounded w-full hover:bg-green-700">Backup All Data to File</button><p class="text-xs text-gray-600 mt-1">Saves a local copy of all sales, services, and settings to a JSON file.</p></div><div><button onclick="triggerRestore()" class="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700">Restore Data from File</button><p class="text-xs text-gray-600 mt-1">WARNING: This will overwrite all current data in Firestore.</p></div><hr><div><button onclick="confirmTransactionalReset()" class="bg-yellow-500 text-white px-4 py-2 rounded w-full hover:bg-yellow-600">Reset Sales Data</button><p class="text-xs text-gray-600 mt-1">Deletes all sales records and resets the OR number. Services and Settings are NOT affected.</p></div><div><button onclick="confirmMasterReset()" class="bg-red-600 text-white px-4 py-2 rounded w-full hover:bg-red-700">Factory Reset</button><p class="text-xs text-gray-600 mt-1">Deletes EVERYTHING from Firestore. The app will return to its default state.</p></div></div></div>
+                <div class="p-4 border border-red-300 bg-red-50 rounded"><h3 class="text-lg font-semibold mb-3 text-red-800">Data Management</h3><div class="space-y-4">
+                    <div><button onclick="backupData()" class="bg-green-600 text-white px-4 py-2 rounded w-full hover:bg-green-700">Backup All Data to File</button><p class="text-xs text-gray-600 mt-1">Saves a local copy of all sales, services, and settings to a JSON file.</p></div>
+                    <!-- ### NEW UPDATE BUTTON ### -->
+                    <div>
+                        <button onclick="checkForUpdates()" class="bg-cyan-600 text-white px-4 py-2 rounded w-full hover:bg-cyan-700">Check for Site Updates</button>
+                        <p class="text-xs text-gray-600 mt-1">Pulls the latest version of the POS from GitHub and reloads the page.</p>
+                    </div>
+                    <!-- ######################## -->
+                    <div><button onclick="triggerRestore()" class="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700">Restore Data from File</button><p class="text-xs text-gray-600 mt-1">WARNING: This will overwrite all current data in Firestore.</p></div><hr>
+                    <div><button onclick="confirmTransactionalReset()" class="bg-yellow-500 text-white px-4 py-2 rounded w-full hover:bg-yellow-600">Reset Sales Data</button><p class="text-xs text-gray-600 mt-1">Deletes all sales records and resets the OR number. Services and Settings are NOT affected.</p></div>
+                    <div><button onclick="confirmMasterReset()" class="bg-red-600 text-white px-4 py-2 rounded w-full hover:bg-red-700">Factory Reset</button><p class="text-xs text-gray-600 mt-1">Deletes EVERYTHING from Firestore. The app will return to its default state.</p></div>
+                </div></div>
             </div>
         </div>
     </div>
@@ -2440,9 +2451,62 @@
         } catch (error) { Swal.fire('SMS Error', `An error occurred: ${error.message}.`, 'error'); }
         finally { showLoading(false); }
     }
+    
+    // ### NEW ### Function to trigger site update via Cloudflare Worker
+    async function checkForUpdates() {
+        const { isConfirmed } = await Swal.fire({
+            title: 'Update Site?',
+            text: "This will fetch the latest version of the POS system. The page will reload after triggering the update.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Update Now!'
+        });
+
+        if (isConfirmed) {
+            showLoading(true, "Sending update signal...");
+
+            // ================== ⚠️ IMPORTANT ⚠️ ==================
+            //      Replace these two values below with
+            //       YOUR Worker URL and Secret Token
+            // ====================================================
+            const workerUrl = 'https://pos-update-trigger.your-name.workers.dev'; // <--- ❗ REPLACE THIS
+            const secretToken = 'rasthaman123';                   // <--- ❗ REPLACE THIS
+
+            try {
+                const response = await fetch(workerUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Auth-Token': secretToken
+                    }
+                });
+
+                if (response.ok) {
+                    await Swal.fire({
+                        title: 'Update Started!',
+                        text: 'The new version is being deployed. The page will reload in 10 seconds to apply the changes.',
+                        icon: 'success',
+                        timer: 10000,
+                        timerProgressBar: true,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    location.reload();
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(errorText);
+                }
+            } catch (error) {
+                console.error("Update failed:", error);
+                Swal.fire('Error', `Could not trigger the update. Please check the console or try again later. Error: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+    }
 
     // --- App Initializer ---
     document.addEventListener('DOMContentLoaded', promptStaffLogin);
   </script>
 </body>
-</html>
+</html>```
