@@ -75,6 +75,37 @@
     #main-app-container.hidden {
         display: none;
     }
+    /* Styles for transaction editing popup */
+    .editable-cart-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed #eee;
+    }
+    .editable-cart-item:last-child {
+        border-bottom: none;
+    }
+    .editable-cart-item-name {
+        flex-grow: 1;
+        margin-right: 0.5rem;
+    }
+    .editable-cart-item-price {
+        width: 80px; /* Adjust as needed */
+        text-align: right;
+    }
+    .swal2-content label {
+        font-weight: 500;
+        margin-top: 0.75rem;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+    .swal2-content input, .swal2-content select, .swal2-content textarea {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 0.25rem;
+    }
   </style>
 </head>
 <body class="bg-gray-100 p-4 text-base"> <!-- CHANGED: text-sm to text-base for better readability on tablets -->
@@ -305,9 +336,10 @@
                     </div>
                     <button onclick="saveShopInfo()" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 w-full">Save Shop Info</button>
                 </div>
-                <!-- ### UPDATED ### SMS Settings Section -->
+                
+                <!-- ### UPDATED AND FINAL SMS Settings Section ### -->
                 <div class="p-4 border rounded border-purple-300 bg-purple-50">
-                    <h3 class="text-lg font-semibold mb-3 text-purple-800">SMS Notification Settings</h3>
+                    <h3 class="text-lg font-semibold mb-3 text-purple-800">SMS Notification Settings (TextBee)</h3>
 
                     <div class="flex items-center justify-between mb-4">
                         <label for="settingSmsEnabled" class="font-medium">Enable SMS Features</label>
@@ -318,19 +350,36 @@
                     </div>
 
                     <div id="sms-config-details" class="space-y-3">
-                        <p class="text-sm text-gray-600 mb-3">Configure your SMS API endpoint and custom message for pickup notifications. Use <code>[Customer Name]</code>, <code>[OR Number]</code>, and <code>[Shop Name]</code> as placeholders.</p>
+                        <p class="text-sm text-gray-600 mb-3">Configure your TextBee API and custom message for pickup notifications. Use <code>[Customer Name]</code>, <code>[OR Number]</code>, and <code>[Shop Name]</code> as placeholders.</p>
+                        
                         <div>
-                            <label for="settingSmsApiUrl" class="block font-medium">SMS API URL (e.g., https://your-api.com/textsms?)</label>
-                            <input id="settingSmsApiUrl" type="url" placeholder="https://final-k541.onrender.com/textsms?" class="border p-2 w-full mt-1">
-                            <p class="text-xs text-gray-500 mt-1">Ensure this API accepts 'n' for phone and 't' for text parameters.</p>
+                            <label for="settingSmsApiKey" class="block font-medium">TextBee API Key</label>
+                            <input id="settingSmsApiKey" type="password" placeholder="Enter your TextBee API Key" class="border p-2 w-full mt-1">
                         </div>
+
+                        <div>
+                            <label for="settingSmsDeviceId" class="block font-medium">TextBee Device ID</label>
+                            <input id="settingSmsDeviceId" type="text" placeholder="Enter your TextBee Device ID" class="border p-2 w-full mt-1">
+                        </div>
+
                         <div>
                             <label for="settingSmsPickupMessageTemplate" class="block font-medium">Pickup Ready Message Template</label>
                             <textarea id="settingSmsPickupMessageTemplate" rows="3" class="border p-2 w-full mt-1" placeholder="Hi [Customer Name], your Mama's Love Laundry order #[OR Number] is now ready for pickup! Thank you from [Shop Name]."></textarea>
                         </div>
+                        
+                        <div class="mt-6 pt-4 border-t border-purple-200">
+                            <h4 class="font-semibold mb-2 text-purple-700">Test Your SMS Setup</h4>
+                            <p class="text-xs text-gray-500 mb-2">Enter a Philippine phone number to send a test message using the unsaved settings above.</p>
+                            <div class="flex gap-2">
+                                <input id="smsTestPhoneNumber" type="text" placeholder="e.g., 09171234567" class="border p-2 w-full">
+                                <button onclick="sendTestSms()" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 whitespace-nowrap">Send Test</button>
+                            </div>
+                        </div>
+                        
                         <button onclick="saveSmsSettings()" class="bg-purple-600 text-white px-4 py-2 rounded mt-4 w-full hover:bg-purple-700">Save SMS Config</button>
                     </div>
                 </div>
+
                 <div class="p-4 border rounded"><h3 class="text-lg font-semibold mb-3">Service Management</h3><div id="service-list-container" class="space-y-2 mb-4"></div><div class="p-3 bg-gray-50 rounded border"><h4 id="service-form-title" class="font-semibold mb-2">Add New Service</h4><input type="hidden" id="service-id"><div class="space-y-3"><div><label for="service-label" class="block font-medium">Service Name / Label</label><input id="service-label" type="text" placeholder="e.g., 8kg Mix, Bedsheet" class="border p-2 w-full mt-1"></div><div><label for="service-price" class="block font-medium">Price (₱)</label><input id="service-price" type="number" placeholder="e.g., 160 or 70" class="border p-2 w-full mt-1"></div><div><label for="service-type" class="block font-medium">Pricing Type</label><select id="service-type" class="border p-2 w-full mt-1"><option value="fixed">Fixed Price</option><option value="per_kg">Price per kg</option></select></div><div class="flex gap-2"><button onclick="saveService()" class="bg-green-500 text-white px-4 py-2 rounded w-full">Save Service</button><button onclick="clearServiceForm()" class="bg-gray-300 px-4 py-2 rounded w-full">Cancel</button></div></div></div></div></div>
             <div id="tab-content-data" class="settings-tab-content hidden space-y-6">
                 <!-- ### NEW ### Staff Security Section -->
@@ -464,7 +513,9 @@
         // SMS elements
         settingSmsEnabled: document.getElementById('settingSmsEnabled'),
         smsConfigDetails: document.getElementById('sms-config-details'),
-        settingSmsApiUrl: document.getElementById('settingSmsApiUrl'),
+        settingSmsApiKey: document.getElementById('settingSmsApiKey'),
+        settingSmsDeviceId: document.getElementById('settingSmsDeviceId'),
+        smsTestPhoneNumber: document.getElementById('smsTestPhoneNumber'),
         settingSmsPickupMessageTemplate: document.getElementById('settingSmsPickupMessageTemplate'),
         customerPromoBtn: document.getElementById('customer-promo-btn'),
     };
@@ -489,7 +540,6 @@
         } else if (viewId === 'pickup-view') {
             allElements.toPosBtn.classList.remove('hidden');
             allElements.toPickupBtn.classList.add('hidden');
-            // Data for this view is now loaded via real-time listeners, no need to call render functions here
         }
     }
 
@@ -563,7 +613,9 @@
         db.collection(COLLECTIONS.CONFIG).doc('shopSettings').onSnapshot(doc => {
             const defaultSettings = {
                 name: "MAMA'S LOVE LAUNDRY", address: "123 Laundry St, Manila", phone: "0912-345-6789", qrUrl: "",
-                smsEnabled: true, smsApiUrl: "https://final-k541.onrender.com/textsms?",
+                smsEnabled: false,
+                smsApiKey: "",
+                smsDeviceId: "",
                 smsPickupMessageTemplate: "Hi [Customer Name], your Mama's Love Laundry order #[OR Number] is now ready for pickup! Thank you from [Shop Name]."
             };
             if (doc.exists) {
@@ -623,13 +675,17 @@
             renderOwnerMachineStatus();
         });
 
-        // Listener for Pending Pickups (which are just transactions with balanceDue > 0)
-        db.collection(COLLECTIONS.TRANSACTIONS).where('balanceDue', '>', 0).onSnapshot(snapshot => {
+        // Listener for dashboard orders (all orders that might appear on the dashboard)
+        db.collection(COLLECTIONS.TRANSACTIONS)
+          .where('paymentType', 'in', ['collection', 'down_payment', 'paid'])
+          .orderBy('time', 'desc') // Order by time to get recent transactions
+          .limit(50) // Limit to a reasonable number for dashboard display
+          .onSnapshot(snapshot => {
             renderPickupView();
             renderPickupDashboard();
         });
 
-        // Listener for today's transactions to update dashboard
+        // Listener for today's transactions to update dashboard totals
         const todayStart = dayjs().tz(TIMEZONE).startOf('day').toISOString();
         const todayEnd = dayjs().tz(TIMEZONE).endOf('day').toISOString();
         db.collection(COLLECTIONS.TRANSACTIONS).where('time', '>=', todayStart).where('time', '<=', todayEnd)
@@ -686,7 +742,12 @@
                 const dailyData = await localforage.getItem(key) || [];
                 dailyData.forEach(tx => {
                     const docRef = db.collection(COLLECTIONS.TRANSACTIONS).doc(tx.orNumber);
-                    batch.set(docRef, tx);
+                    // Add new fields with default values for old transactions
+                    batch.set(docRef, {
+                        ...tx,
+                        smsSent: tx.smsSent || false,
+                        dashboardFinished: (tx.paymentType === 'paid' && !shopSettings.smsEnabled) || false // If fully paid and SMS not enabled, finish immediately
+                    }, { merge: true });
                 });
             }
 
@@ -742,7 +803,7 @@
         allElements.pickupDashboardTotalSales.textContent = `₱${totalSalesToday.toFixed(2)}`;
 
 
-        // Calculate "For Collection" stats
+        // Calculate "For Collection" stats (ONLY orders with balance due)
         const pendingSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS).where('balanceDue', '>', 0).get();
         const forCollectionCount = pendingSnapshot.size;
         const totalValueForCollection = pendingSnapshot.docs.reduce((sum, doc) => sum + doc.data().balanceDue, 0);
@@ -917,7 +978,8 @@
 
     function renderSmsSettings() {
         allElements.settingSmsEnabled.checked = shopSettings.smsEnabled;
-        allElements.settingSmsApiUrl.value = shopSettings.smsApiUrl || '';
+        allElements.settingSmsApiKey.value = shopSettings.smsApiKey || '';
+        allElements.settingSmsDeviceId.value = shopSettings.smsDeviceId || '';
         allElements.settingSmsPickupMessageTemplate.value = shopSettings.smsPickupMessageTemplate || '';
         toggleSmsSettings(false); // Update UI without saving
     }
@@ -925,7 +987,8 @@
     async function saveSmsSettings() {
         const newSmsSettings = {
             smsEnabled: allElements.settingSmsEnabled.checked,
-            smsApiUrl: allElements.settingSmsApiUrl.value.trim(),
+            smsApiKey: allElements.settingSmsApiKey.value.trim(),
+            smsDeviceId: allElements.settingSmsDeviceId.value.trim(),
             smsPickupMessageTemplate: allElements.settingSmsPickupMessageTemplate.value.trim()
         };
         await db.collection(COLLECTIONS.CONFIG).doc('shopSettings').update(newSmsSettings);
@@ -1052,6 +1115,12 @@
         const newStatus = [];
         for (let i = 1; i <= machineConfig.numWashers; i++) { newStatus.push({ id: `W${i}`, type: 'Washer', set: i, cycleCount: 0, isActive: true }); }
         for (let i = 1; i <= machineConfig.numDryers; i++) { newStatus.push({ id: `D${i}`, type: 'Dryer', set: i, cycleCount: 0, isActive: true }); }
+
+        // Clear existing machine status
+        const currentStatusSnapshot = await db.collection(COLLECTIONS.MACHINE_STATUS).get();
+        currentStatusSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+
+        // Add new machine status
         newStatus.forEach(m => {
             const docRef = db.collection(COLLECTIONS.MACHINE_STATUS).doc(m.id);
             batch.set(docRef, m);
@@ -1112,13 +1181,6 @@
         });
     }
     function renderOwnerMachineStatus() { document.getElementById('owner-machine-status-container').innerHTML = getMachineManagerHTML(false); }
-
-    // Note: This function is now part of the processAndSaveOrder batched write for better reliability.
-    // It is kept here conceptually, but the actual database operation is now atomic with the order creation.
-    async function incrementMachineCyclesForOrder(numLoads) {
-        // The logic for choosing which machine to increment is now inside processAndSaveOrder.
-        // This function remains empty as a placeholder to avoid breaking any old calls.
-    }
 
     async function saveMachineSettings() {
         const nW = parseInt(document.getElementById('settingNumWashers').value);
@@ -1245,7 +1307,7 @@
             let amountPaid = 0;
             let balanceDue = total;
             let change = 0;
-            const smsSent = false;
+            let dashboardFinished = false; // New field
 
             if (paymentType === 'paid') {
                 const amountPaidInput = await getAmountReceived(total, total, 'Amount Received');
@@ -1253,6 +1315,10 @@
                 amountPaid = amountPaidInput;
                 balanceDue = 0;
                 change = amountPaidInput - total;
+                // If fully paid at creation AND SMS is disabled, finish immediately
+                if (!shopSettings.smsEnabled) {
+                    dashboardFinished = true;
+                }
             } else if (paymentType === 'down_payment') {
                 const downPaymentAmountInput = await getAmountReceived(0.01, total, 'Down Payment Amount');
                 if (downPaymentAmountInput === null) return;
@@ -1262,7 +1328,7 @@
             }
 
             // ### OPTIMIZATION: Optimistic UI ###
-            const orderData = { name, phone, cart: [...cart], total, paymentType, amountPaid, change, notes, balanceDue, smsSent };
+            const orderData = { name, phone, cart: [...cart], total, paymentType, amountPaid, change, notes, balanceDue, smsSent: false, dashboardFinished: dashboardFinished };
 
             clearForm(); // Clear the form immediately for a snappy feel
             Toast.fire({icon: 'success', title: 'Order submitted!'});
@@ -1276,7 +1342,7 @@
     }
 
     async function processAndSaveOrder(orderData) {
-        const { name, phone, cart, total, paymentType, amountPaid, notes, balanceDue, change, smsSent } = orderData;
+        const { name, phone, cart, total, paymentType, amountPaid, notes, balanceDue, change, smsSent, dashboardFinished } = orderData;
 
         const time = dayjs().tz(TIMEZONE).toISOString();
         const orCounterRef = db.collection(COLLECTIONS.CONFIG).doc('orCounter');
@@ -1324,7 +1390,7 @@
         showReceipt(finalTransactionData);
     }
 
-    // --- BT --- START OF BLUETOOTH PRINTING LOGIC (UPDATED WITH BUG FIX) ---
+    // --- BT --- START OF BLUETOOTH PRINTING LOGIC ---
     async function saveBluetoothSettings() {
         const isChecked = document.getElementById('swal-auto-print-toggle').checked;
         bluetoothSettings.autoPrint = isChecked;
@@ -1337,17 +1403,10 @@
         _add(data) { this._buffer.push(...data); }
         initialize() { this._add([0x1B, 0x40]); return this; }
         text(str) { this._add(this.encoder.encode(str)); return this; }
-
-        // --- FIXED --- Added "return this;" to allow for method chaining
-        newline(n = 1) {
-            for (let i = 0; i < n; i++) this._add([0x0A]);
-            return this;
-        }
-
+        newline(n = 1) { for (let i = 0; i < n; i++) this._add([0x0A]); return this; }
         align(alignment) { const val = { left: 0, center: 1, right: 2 }[alignment]; this._add([0x1B, 0x61, val]); return this; }
         bold(on) { this._add([0x1B, 0x45, on ? 1 : 0]); return this; }
         cut() { this._add([0x1D, 0x56, 1]); return this; }
-
         qrcode(data, size = 4) {
             const qr = qrcode(0, 'M');
             qr.addData(data);
@@ -1363,7 +1422,6 @@
             this._add([0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 48]); // Print
             return this;
         }
-
         getBuffer() { return new Uint8Array(this._buffer); }
     }
 
@@ -1860,8 +1918,10 @@
         let statusTag, statusTagColor, payButtonHtml = '', smsButtonHtml = '';
         let displayAmount;
 
+        // Ensure new fields exist for old data
         if (tx.balanceDue === undefined) { tx.balanceDue = Math.max(0, tx.total - (tx.amountPaid || 0)); }
         if (tx.smsSent === undefined) tx.smsSent = false;
+        if (tx.dashboardFinished === undefined) tx.dashboardFinished = false;
 
         if (tx.paymentType === 'paid') {
             statusTag = 'Paid'; statusTagColor = 'bg-green-200 text-green-800'; displayAmount = tx.total.toFixed(2);
@@ -1869,13 +1929,13 @@
             statusTag = 'Down Payment'; statusTagColor = 'bg-blue-200 text-blue-800';
             displayAmount = `${tx.amountPaid.toFixed(2)} (Bal: ${tx.balanceDue.toFixed(2)})`;
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.balanceDue}, 'balance_paid')" class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">Pay Balance</button>`;
-        } else {
+        } else { // 'collection'
             statusTag = 'For Collection'; statusTagColor = 'bg-yellow-200 text-yellow-800';
             displayAmount = tx.balanceDue.toFixed(2);
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.total}, 'paid')" class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">Mark as Paid</button>`;
         }
 
-        if (tx.balanceDue > 0 && shopSettings.smsEnabled && tx.phone) {
+        if (shopSettings.smsEnabled && tx.phone) {
              smsButtonHtml = tx.smsSent ? `<button disabled class="bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs ml-2">SMS Sent</button>` : `<button onclick="sendPickupReadySms('${tx.orNumber}', '${tx.phone}', '${tx.name}')" class="bg-purple-500 text-white px-3 py-1 rounded text-xs hover:bg-purple-600 ml-2">Send SMS</button>`;
         }
 
@@ -1896,6 +1956,7 @@
             <div class="mt-2 text-xs">${tx.cart.map(i => i.label).join(', ')}</div>
             <div class="mt-2 pt-2 border-t flex justify-end gap-2">
                 ${payButtonHtml} ${smsButtonHtml}
+                <button onclick='editTransaction("${tx.orNumber}")' class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">Edit</button>
                 <button onclick='showReceipt(${JSON.stringify(tx)})' class="bg-gray-200 px-3 py-1 rounded text-xs hover:bg-gray-300">View Receipt</button>
             </div>
         `;
@@ -1917,17 +1978,32 @@
             const currentTransaction = currentDoc.data();
 
             let updatedData = {};
-            if (newPaymentType === 'paid') {
+            if (newPaymentType === 'paid') { // Order becoming fully paid (from collection or DP)
                 updatedData = {
-                    paymentType: 'paid', amountPaid: amountPaidInput, change: change,
+                    paymentType: 'paid', amountPaid: (currentTransaction.amountPaid || 0) + amountPaidInput, change: change,
                     paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0
                 };
-            } else if (newPaymentType === 'balance_paid') {
+                // If SMS is disabled, mark as dashboardFinished immediately
+                if (!shopSettings.smsEnabled) {
+                    updatedData.dashboardFinished = true;
+                } else {
+                    // If SMS is enabled, it will await SMS send, so dashboardFinished remains false
+                    updatedData.dashboardFinished = false;
+                }
+
+            } else if (newPaymentType === 'balance_paid') { // Paying a balance on a down_payment order
                 updatedData = {
-                    paymentType: 'paid', amountPaid: currentTransaction.amountPaid + amountPaidInput,
+                    paymentType: 'paid', amountPaid: (currentTransaction.amountPaid || 0) + amountPaidInput,
                     balancePaidAmount: amountPaidInput, change: change,
                     paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0
                 };
+                // If SMS is disabled, mark as dashboardFinished immediately
+                 if (!shopSettings.smsEnabled) {
+                    updatedData.dashboardFinished = true;
+                } else {
+                    // If SMS is enabled, it will await SMS send, so dashboardFinished remains false
+                    updatedData.dashboardFinished = false;
+                }
             }
 
             await txRef.update(updatedData);
@@ -1948,12 +2024,26 @@
         container.innerHTML = '<div class="inline-loader"></div>';
         const searchTerm = allElements.pickupSearchInput.value.toLowerCase();
 
-        // This query is now handled by the real-time listener, but we can re-fetch for filtering
-        const pendingSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS).where('balanceDue', '>', 0).get();
-        let activePendingOrders = pendingSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+        // Query 1: Orders with balance due (For Collection, Down Payment)
+        const pendingOrdersSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
+                                              .where('balanceDue', '>', 0)
+                                              .get();
+        let ordersWithBalanceDue = pendingOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
+        // Query 2: Fully paid orders that are waiting for SMS notification and not yet finished
+        const paidAwaitingSmsSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
+                                               .where('paymentType', '==', 'paid')
+                                               .where('smsSent', '==', false)
+                                               .where('dashboardFinished', '==', false)
+                                               .get();
+        let paidAwaitingSmsOrders = paidAwaitingSmsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+
+
+        let allDashboardOrders = [...ordersWithBalanceDue, ...paidAwaitingSmsOrders];
+
+        // Filter by search term
         if (searchTerm) {
-            activePendingOrders = activePendingOrders.filter(tx =>
+            allDashboardOrders = allDashboardOrders.filter(tx =>
                 tx.name.toLowerCase().includes(searchTerm) ||
                 (tx.phone && tx.phone.toLowerCase().includes(searchTerm)) ||
                 tx.orNumber.toLowerCase().includes(searchTerm)
@@ -1962,13 +2052,13 @@
 
         container.innerHTML = '';
 
-        if (activePendingOrders.length === 0) {
-            const message = searchTerm ? `No pending orders match your filter.` : `No orders for collection.`;
+        if (allDashboardOrders.length === 0) {
+            const message = searchTerm ? `No dashboard orders match your filter.` : `No orders waiting for customer action.`;
             container.innerHTML = `<p class="text-center text-gray-500 p-4">${message}</p>`;
             return;
         }
 
-        activePendingOrders.sort((a, b) => new Date(a.time) - new Date(b.time)).forEach(tx => renderPickupCard(tx, container));
+        allDashboardOrders.sort((a, b) => new Date(a.time) - new Date(b.time)).forEach(tx => renderPickupCard(tx, container));
     }
 
     function getColorForText(str) {
@@ -1980,26 +2070,45 @@
     }
 
     function renderPickupCard(tx, container) {
+        // Guard against rendering already finished orders
+        if (tx.dashboardFinished) {
+            return;
+        }
+
         const card = document.createElement('div');
         const timeObj = dayjs(tx.time);
         let displayTime, timeSuffix = ' ago';
         if (typeof timeObj.fromNow === 'function') { displayTime = timeObj.fromNow(true); }
         else { displayTime = timeObj.format('MMM DD, YYYY'); timeSuffix = ''; }
 
-        let bgColor, statusTag, statusTagColor, totalDisplay, payButton, smsButtonHtml = '';
+        let bgColor, statusTag, statusTagColor, totalDisplay, payButtonHtml = '', smsButtonHtml = '';
+        let viewReceiptButtonHtml = ''; // Initialize the receipt button HTML
         const customerNameColor = getColorForText(tx.name);
 
+        // Ensure new fields exist for old data
         if (tx.balanceDue === undefined) tx.balanceDue = Math.max(0, tx.total - (tx.amountPaid || 0));
         if (tx.smsSent === undefined) tx.smsSent = false;
+        if (tx.dashboardFinished === undefined) tx.dashboardFinished = false; // Should have been initialized but safe to check
 
         if (tx.paymentType === 'down_payment') {
             bgColor = 'bg-blue-50 border-blue-200'; statusTag = 'Down Payment'; statusTagColor = 'bg-blue-200 text-blue-800';
             totalDisplay = `₱${tx.amountPaid.toFixed(2)} (Bal: ₱${tx.balanceDue.toFixed(2)})`;
-            payButton = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.balanceDue}, 'balance_paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Pay Balance</button>`;
-        } else {
+            payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.balanceDue}, 'balance_paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Pay Balance</button>`;
+            // No View Receipt button for pending payment orders on dashboard
+        } else if (tx.paymentType === 'paid') {
+            bgColor = 'bg-green-50 border-green-200'; statusTag = 'Fully Paid'; statusTagColor = 'bg-green-200 text-green-800';
+            totalDisplay = `₱${tx.total.toFixed(2)}`;
+            payButtonHtml = ''; // No payment button for already paid orders
+            // For fully paid orders, the dashboard only serves for SMS and viewing receipt
+            viewReceiptButtonHtml = `<button onclick='showReceipt(${JSON.stringify(tx)})' class="bg-gray-200 p-2 rounded hover:bg-gray-300" title="View Receipt">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    </button>`;
+        }
+        else { // 'collection'
             bgColor = 'bg-yellow-50 border-yellow-200'; statusTag = 'For Collection'; statusTagColor = 'bg-yellow-200 text-yellow-800';
             totalDisplay = `₱${tx.balanceDue.toFixed(2)}`;
-            payButton = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.total}, 'paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Mark as Paid</button>`;
+            payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.total}, 'paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Mark as Paid</button>`;
+            // No View Receipt button for pending payment orders on dashboard
         }
 
         if (shopSettings.smsEnabled && tx.phone) {
@@ -2021,10 +2130,7 @@
                 <div class="flex flex-col items-start md:items-end">
                     <p class="font-bold text-2xl mb-2">${totalDisplay}</p>
                     <div class="flex items-center gap-2 flex-wrap justify-end">
-                        ${payButton} ${smsButtonHtml}
-                        <button onclick='showReceipt(${JSON.stringify(tx)})' class="bg-gray-200 p-2 rounded hover:bg-gray-300" title="View Receipt">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        </button>
+                        ${payButtonHtml} ${smsButtonHtml} ${viewReceiptButtonHtml}
                     </div>
                 </div>
             </div>`;
@@ -2084,106 +2190,6 @@
         container.innerHTML = `<p class="font-bold text-lg p-2 bg-gray-100 rounded">Total for ${dateKey}: ₱${total.toFixed(2)}</p>`;
         dailyData.forEach(tx => renderTransaction(tx, container));
         showLoading(false);
-    }
-
-    async function openCustomerPromoManager() {
-        showLoading(true, 'Fetching customers...');
-        if (!shopSettings.smsApiUrl || !shopSettings.smsPickupMessageTemplate) {
-            showLoading(false);
-            return Swal.fire('SMS Not Configured', 'Please set up SMS API URL and message template in Owner Settings > Shop Config.', 'warning');
-        }
-        const customersWithPhones = shopCustomers.filter(c => c && c.phone && /^\d+$/.test(c.phone));
-        if (customersWithPhones.length === 0) {
-            showLoading(false);
-            return Swal.fire('No Customers Found', 'No customers with valid phone numbers in the database.', 'info');
-        }
-        const modalHtml = `<div class="text-left space-y-4"><p>Send a promotional message to <strong class="text-indigo-600">${customersWithPhones.length} customers</strong>.</p><div><label for="promo-message-input" class="font-semibold block mb-1">Your Message:</label><textarea id="promo-message-input" rows="4" class="border p-2 w-full rounded" placeholder="Type your promo message..."></textarea><p class="text-xs text-gray-500 mt-1"><code>[Shop Name]</code> will be replaced.</p></div></div>`;
-        showLoading(false);
-        const { value: message } = await Swal.fire({
-            title: 'Customer Promo SMS', html: modalHtml, width: '90%', maxWidth: '600px', showCancelButton: true,
-            confirmButtonText: 'Send to All Customers', confirmButtonColor: '#4f46e5',
-            preConfirm: () => {
-                const msg = document.getElementById('promo-message-input').value;
-                if (!msg || msg.trim() === '') { Swal.showValidationMessage('Message cannot be empty.'); return false; }
-                return msg;
-            }
-        });
-        if (message) {
-            const { isConfirmed } = await Swal.fire({
-                title: 'Are you absolutely sure?', text: `This will send an SMS to ${customersWithPhones.length} customers.`,
-                icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Yes, Send It!',
-            });
-            if (isConfirmed) await sendSmsBlast(customersWithPhones, message);
-        }
-    }
-
-    async function sendSinglePromoMessage(customer, message) {
-        try {
-            const encodedMessage = encodeURIComponent(message);
-            const apiUrl = `${shopSettings.smsApiUrl}n=${customer.phone}&t=${encodedMessage}`;
-            const response = await fetch(apiUrl);
-            if (response.ok) {
-                const responseData = await response.json().catch(() => ({}));
-                return { success: responseData.status === 'success' || responseData.success, log: `✔ API Accepted: ${customer.name} (${customer.phone})` };
-            }
-            return { success: false, log: `✖ API Error: ${customer.name} (${customer.phone}) - Status ${response.status}` };
-        } catch (error) {
-            return { success: false, log: `✖ Network Error: ${customer.name} (${customer.phone})` };
-        }
-    }
-
-    async function sendSmsBlast(customers, message) {
-        Swal.fire({
-            title: 'Sending Promo...',
-            html: `<div class="text-left space-y-4"><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="promo-progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div></div><p id="promo-progress-text" class="text-center font-semibold"></p><div class="mt-4"><label class="font-semibold block mb-1">Send Log:</label><textarea id="promo-log-area" readonly class="border p-2 w-full h-40 bg-gray-100 font-mono text-xs"></textarea></div></div>`,
-            allowOutsideClick: false, showConfirmButton: false,
-            willOpen: async () => {
-                Swal.showLoading();
-                const bar = document.getElementById('promo-progress-bar'), text = document.getElementById('promo-progress-text'), log = document.getElementById('promo-log-area');
-                let s = 0, f = 0;
-                const msg = message.replace(/\[Shop Name\]/g, shopSettings.name);
-                for (let i = 0; i < customers.length; i++) {
-                    text.textContent = `Sending to ${customers[i].name}... (${i + 1}/${customers.length})`;
-                    const result = await sendSinglePromoMessage(customers[i], msg);
-                    log.value += result.log + '\n'; log.scrollTop = log.scrollHeight;
-                    result.success ? s++ : f++;
-                    bar.style.width = `${((i + 1) / customers.length) * 100}%`;
-                    if (i < customers.length - 1) await new Promise(res => setTimeout(res, 1000));
-                }
-                Swal.fire({
-                    title: 'Promo Send Complete!', icon: 'info',
-                    html: `<div class="text-left"><p><strong>Sent Successfully:</strong> ${s}</p><p><strong>Failed:</strong> ${f}</p></div>`
-                });
-            }
-        });
-    }
-
-    // UPDATED to fetch data from Firestore for reports
-    async function getSalesDataForPeriod(startDate, endDate) {
-        const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
-                                 .where('time', '>=', startDate.toISOString())
-                                 .where('time', '<=', endDate.toISOString())
-                                 .get();
-        return snapshot.docs.map(doc => doc.data());
-    }
-
-    async function getCollectedDataForPeriod(startDate, endDate) {
-        const dailyCollected = {};
-        const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
-                               .where('paymentTimestamp', '>=', startDate.toISOString())
-                               .where('paymentTimestamp', '<=', endDate.toISOString())
-                               .get();
-
-        snapshot.docs.forEach(doc => {
-            const tx = doc.data();
-            const paymentDateKey = dayjs(tx.paymentTimestamp).tz(TIMEZONE).format('YYYY-MM-DD');
-            if (!dailyCollected[paymentDateKey]) dailyCollected[paymentDateKey] = 0;
-
-            if (tx.balancePaidAmount) dailyCollected[paymentDateKey] += tx.balancePaidAmount;
-            else if (tx.paymentType === 'down_payment') dailyCollected[paymentDateKey] += tx.amountPaid;
-            else if (tx.paymentType === 'paid') dailyCollected[paymentDateKey] += tx.total;
-        });
-        return dailyCollected;
     }
 
     async function generateExcelReport() {
@@ -2359,13 +2365,405 @@
         for (let i = 1; i <= daysInMonth; i++) dailyBreakdown[i] = { sales: 0, orders: 0, collected: 0 };
         currentMonthSales.forEach(tx => { const d = dayjs(tx.time).tz(TIMEZONE).date(); dailyBreakdown[d].sales += tx.total; dailyBreakdown[d].orders++; });
         for (const [dateKey, amount] of Object.entries(collectedDataMap)) { const d = dayjs(dateKey).date(); if (dailyBreakdown[d]) dailyBreakdown[d].collected = amount; }
-        let tableHtml = `<table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th class="px-4 py-2">Date</th><th class="px-4 py-2 text-right">Orders</th><th class="px-4 py-2 text-right">Total Sales</th><th class="px-4 py-2 text-right">Collected (Cash)</th></tr></thead><tbody>`;
+        
+        let tableHtml = `<table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th class="px-4 py-2">Date</th><th class="px-4 py-2 text-right">Orders</th><th class="px-4 py-2 text-right">Total Sales</th><th class="px-4 py-2 text-right">Collected (Cash)</th><th class="px-4 py-2 text-center">Actions</th></tr></thead><tbody>`;
         for (let i = daysInMonth; i >= 1; i--) {
-            tableHtml += `<tr class="bg-white border-b"><td class="px-4 py-2 font-medium">${now.format('MMM')} ${i}</td><td class="px-4 py-2 text-right">${dailyBreakdown[i].orders}</td><td class="px-4 py-2 text-right">₱${dailyBreakdown[i].sales.toFixed(2)}</td><td class="px-4 py-2 text-right font-semibold">₱${dailyBreakdown[i].collected.toFixed(2)}</td></tr>`;
+            const dayStr = `${now.year()}-${(now.month() + 1).toString().padStart(2, '0')}-${i.toString().padStart(2, '0')}`;
+            tableHtml += `<tr class="bg-white border-b">
+                            <td class="px-4 py-2 font-medium">${now.format('MMM')} ${i}</td>
+                            <td class="px-4 py-2 text-right">${dailyBreakdown[i].orders}</td>
+                            <td class="px-4 py-2 text-right">₱${dailyBreakdown[i].sales.toFixed(2)}</td>
+                            <td class="px-4 py-2 text-right font-semibold">₱${dailyBreakdown[i].collected.toFixed(2)}</td>
+                            <td class="px-4 py-2 text-center">
+                                <button onclick="openDailyTransactionEditor('${dayStr}')" class="bg-indigo-500 text-white px-2 py-1 rounded text-xs hover:bg-indigo-600">Edit Day</button>
+                            </td>
+                           </tr>`;
         }
         tableHtml += '</tbody></table>';
         tableContainer.innerHTML = tableHtml;
     }
+
+    async function openDailyTransactionEditor(dateString) {
+        showLoading(true, `Loading transactions for ${dateString}...`);
+        try {
+            const dayStart = dayjs(dateString).startOf('day').toISOString();
+            const dayEnd = dayjs(dateString).endOf('day').toISOString();
+            const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
+                                     .where('time', '>=', dayStart)
+                                     .where('time', '<=', dayEnd)
+                                     .orderBy('time', 'desc')
+                                     .get();
+            const dailyTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            let transactionsHtml = '';
+            if (dailyTransactions.length === 0) {
+                transactionsHtml = '<p class="text-center text-gray-500">No transactions for this day.</p>';
+            } else {
+                transactionsHtml = dailyTransactions.map(tx => `
+                    <div class="p-3 bg-white border rounded shadow-sm mb-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-bold">OR#: ${tx.orNumber}</p>
+                                <p>${tx.name} (${tx.phone || 'N/A'})</p>
+                                <p class="text-sm text-gray-500">Total: ₱${tx.total.toFixed(2)}</p>
+                            </div>
+                            <button onclick="editTransaction('${tx.orNumber}')" class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">Edit</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            Swal.fire({
+                title: `Transactions for ${dateString}`,
+                html: `<div class="max-h-96 overflow-y-auto">${transactionsHtml}</div>`,
+                width: '600px',
+                showConfirmButton: true,
+                confirmButtonText: 'Done',
+                didOpen: () => { showLoading(false); }
+            });
+
+        } catch (error) {
+            console.error("Error opening daily transaction editor:", error);
+            Swal.fire('Error', `Failed to load daily transactions: ${error.message}`, 'error');
+            showLoading(false);
+        }
+    }
+
+
+    async function editTransaction(orNumber) {
+        showLoading(true, `Loading OR# ${orNumber}...`);
+        try {
+            const txDoc = await db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).get();
+            if (!txDoc.exists) {
+                Swal.fire('Not Found', `Transaction OR# ${orNumber} not found.`, 'error');
+                showLoading(false);
+                return;
+            }
+            let tx = txDoc.data();
+
+            // Ensure new fields exist for old data being edited
+            if (tx.balanceDue === undefined) { tx.balanceDue = Math.max(0, tx.total - (tx.amountPaid || 0)); }
+            if (tx.smsSent === undefined) tx.smsSent = false;
+            if (tx.dashboardFinished === undefined) tx.dashboardFinished = false;
+            if (tx.notes === undefined) tx.notes = '';
+
+
+            // Build cart items HTML for editing
+            let cartItemsHtml = tx.cart.map((item, index) => `
+                <div class="editable-cart-item">
+                    <span class="editable-cart-item-name">${item.label}</span>
+                    <input type="number" step="0.01" class="border p-1 w-20 text-right" value="${item.price.toFixed(2)}" data-index="${index}" data-field="price">
+                    <button class="text-red-500 ml-2" onclick="removeEditedCartItem(this, '${orNumber}', ${index})">&times;</button>
+                </div>
+            `).join('');
+
+            const result = await Swal.fire({ // Removed destructuring here
+                title: `Edit Order: OR# ${orNumber}`,
+                html: `
+                    <div id="edit-transaction-form" class="text-left space-y-2">
+                        <label for="edit-name">Customer Name:</label>
+                        <input id="edit-name" class="swal2-input" value="${tx.name}">
+
+                        <label for="edit-phone">Phone Number:</label>
+                        <input id="edit-phone" class="swal2-input" value="${tx.phone || ''}">
+
+                        <label for="edit-notes">Notes:</label>
+                        <textarea id="edit-notes" class="swal2-textarea">${tx.notes || ''}</textarea>
+
+                        <label for="edit-paymentType">Payment Type:</label>
+                        <select id="edit-paymentType" class="swal2-select">
+                            <option value="collection" ${tx.paymentType === 'collection' ? 'selected' : ''}>For Collection</option>
+                            <option value="paid" ${tx.paymentType === 'paid' ? 'selected' : ''}>Fully Paid</option>
+                            <option value="down_payment" ${tx.paymentType === 'down_payment' ? 'selected' : ''}>Down Payment</option>
+                        </select>
+
+                        <div class="mt-4 p-2 border rounded bg-gray-50">
+                            <h5 class="font-bold mb-2">Order Items (Edit Prices):</h5>
+                            <div id="edit-cart-items-container">
+                                ${cartItemsHtml}
+                            </div>
+                             <div class="flex items-center gap-2 mt-3">
+                                <select id="edit-add-service-select" class="border p-2 flex-grow">
+                                    <option value="">Add Service</option>
+                                    ${shopServices.map(s => `<option value="${s.id}" data-price="${s.price}" data-type="${s.type}">${s.label} (₱${s.price}${s.type === 'per_kg' ? '/kg' : ''})</option>`).join('')}
+                                </select>
+                                <input type="number" id="edit-add-service-weight" placeholder="kg (if per-kg)" class="border p-2 w-24">
+                                <button onclick="addEditedCartItem()" class="bg-green-500 text-white px-3 py-1 rounded text-sm">Add</button>
+                            </div>
+                        </div>
+
+                        <label for="edit-total">Calculated Total:</label>
+                        <input id="edit-total" class="swal2-input" value="${tx.total.toFixed(2)}" readonly>
+                        
+                        <label for="edit-amountPaid">Amount Paid (Initial + Balance Paid):</label>
+                        <input id="edit-amountPaid" type="number" step="0.01" class="swal2-input" value="${tx.amountPaid.toFixed(2)}">
+
+                        <label for="edit-balanceDue">Balance Due:</label>
+                        <input id="edit-balanceDue" type="number" step="0.01" class="swal2-input" value="${tx.balanceDue.toFixed(2)}" readonly>
+                    </div>
+                `,
+                width: '800px',
+                showCancelButton: true,
+                confirmButtonText: 'Save Changes',
+                customClass: {
+                    container: 'edit-transaction-swal-container'
+                },
+                preConfirm: () => {
+                    const name = document.getElementById('edit-name').value.trim();
+                    const phone = document.getElementById('edit-phone').value.trim().replace(/\D/g, '');
+                    const notes = document.getElementById('edit-notes').value.trim();
+                    const paymentType = document.getElementById('edit-paymentType').value;
+                    const amountPaid = parseFloat(document.getElementById('edit-amountPaid').value);
+                    
+                    // Recalculate cart from current inputs
+                    const updatedCart = [];
+                    document.querySelectorAll('#edit-cart-items-container .editable-cart-item').forEach(itemDiv => {
+                        const label = itemDiv.querySelector('.editable-cart-item-name').textContent;
+                        const price = parseFloat(itemDiv.querySelector('input[type="number"]').value);
+                        if (!isNaN(price) && price > 0) {
+                            updatedCart.push({ label, price });
+                        }
+                    });
+
+                    const newTotal = updatedCart.reduce((sum, item) => sum + item.price, 0);
+
+                    if (!name || updatedCart.length === 0) {
+                        Swal.showValidationMessage('Customer Name and at least one item are required.');
+                        return false;
+                    }
+                    if (isNaN(amountPaid) || amountPaid < 0) {
+                        Swal.showValidationMessage('Amount Paid must be a valid non-negative number.');
+                        return false;
+                    }
+                    // Specific validation for 'paid' type
+                    if (paymentType === 'paid' && amountPaid < newTotal) {
+                        Swal.showValidationMessage('For "Fully Paid" orders, Amount Paid cannot be less than Total.');
+                        return false;
+                    }
+                    // Specific validation for 'down_payment' type
+                    if (paymentType === 'down_payment' && amountPaid > newTotal) {
+                        Swal.showValidationMessage('For "Down Payment" orders, Amount Paid cannot be more than Total.');
+                        return false;
+                    }
+
+                    return { name, phone, notes, paymentType, amountPaid, cart: updatedCart, total: newTotal };
+                },
+                didOpen: () => {
+                    showLoading(false);
+                    // Add event listeners for dynamic recalculation
+                    const cartItemsContainer = document.getElementById('edit-cart-items-container');
+                    cartItemsContainer.addEventListener('input', (e) => {
+                        if (e.target.dataset.field === 'price') {
+                            recalculateEditTransactionTotals();
+                        }
+                    });
+                    document.getElementById('edit-paymentType').addEventListener('change', recalculateEditTransactionTotals);
+                    document.getElementById('edit-amountPaid').addEventListener('input', recalculateEditTransactionTotals);
+                    recalculateEditTransactionTotals(); // Initial calculation
+                },
+                showDenyButton: true,
+                denyButtonText: 'Delete Order',
+                denyButtonColor: '#d33'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    showLoading(true, 'Saving changes...');
+                    const updatedData = result.value; // Safely access result.value here
+                    let newBalanceDue = 0;
+                    let newChange = 0;
+                    let dashboardFinished = tx.dashboardFinished; // Preserve current state
+
+                    if (updatedData.paymentType === 'paid') {
+                        newBalanceDue = 0;
+                        newChange = updatedData.amountPaid - updatedData.total;
+                        // If becomes fully paid, and SMS is disabled, then finish dashboard entry
+                        if (!shopSettings.smsEnabled) {
+                             dashboardFinished = true;
+                        } else {
+                            // If SMS is enabled, and it just became fully paid, it should show for SMS, so dashboardFinished=false
+                            // unless SMS was already sent, then it remains finished.
+                            if (tx.smsSent) { // Use original tx.smsSent to check if SMS was already sent for this transaction
+                                dashboardFinished = true;
+                            } else {
+                                dashboardFinished = false; // Awaiting SMS
+                            }
+                        }
+                    } else if (updatedData.paymentType === 'down_payment') {
+                        newBalanceDue = updatedData.total - updatedData.amountPaid;
+                        newChange = 0; // Change is only applicable if Amount Paid > Total
+                        if (newBalanceDue < 0) { // If amountPaid was more than total for a DP
+                            newChange = Math.abs(newBalanceDue);
+                            newBalanceDue = 0;
+                        }
+                        dashboardFinished = false; // Always on dashboard if balance due or down payment
+                    } else if (updatedData.paymentType === 'collection') {
+                        newBalanceDue = updatedData.total;
+                        updatedData.amountPaid = 0; // For collection, amountPaid is 0 initially
+                        newChange = 0;
+                        dashboardFinished = false; // Always on dashboard if for collection
+                    }
+
+                    const finalUpdate = {
+                        name: updatedData.name,
+                        phone: updatedData.phone,
+                        notes: updatedData.notes,
+                        paymentType: updatedData.paymentType,
+                        cart: updatedData.cart,
+                        total: updatedData.total,
+                        amountPaid: updatedData.amountPaid,
+                        balanceDue: newBalanceDue,
+                        change: newChange,
+                        dashboardFinished: dashboardFinished,
+                        // Preserve original smsSent status if not directly modified
+                        smsSent: tx.smsSent,
+                        // Ensure searchable keywords are updated
+                        _searchableKeywords: [updatedData.name.toLowerCase(), updatedData.phone, tx.orNumber].filter(Boolean)
+                    };
+
+                    // Update customer record if phone changed and is valid
+                    if (tx.phone !== updatedData.phone && updatedData.phone) {
+                        const oldCustomerRef = db.collection(COLLECTIONS.CUSTOMERS).doc(tx.phone);
+                        const newCustomerRef = db.collection(COLLECTIONS.CUSTOMERS).doc(updatedData.phone);
+                        await db.runTransaction(async t => {
+                            const newCustomerDoc = await t.get(newCustomerRef);
+                            if (newCustomerDoc.exists && newCustomerDoc.data().name !== updatedData.name) {
+                                // Conflict: another customer already exists with this phone number and a different name.
+                                // Or perhaps merge existing data? For now, we'll just overwrite.
+                                t.set(newCustomerRef, { name: updatedData.name, phone: updatedData.phone }, { merge: true });
+                            } else if (!newCustomerDoc.exists) {
+                                t.set(newCustomerRef, { name: updatedData.name, phone: updatedData.phone });
+                            }
+                            // Optionally delete old customer record if no other transactions refer to it (complex)
+                            // For simplicity, we just update/create the new one.
+                        });
+                    } else if (updatedData.phone) {
+                        // If phone didn't change, but name might have, update existing customer
+                        await db.collection(COLLECTIONS.CUSTOMERS).doc(updatedData.phone).set({ name: updatedData.name, phone: updatedData.phone }, { merge: true });
+                    }
+
+                    await db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).update(finalUpdate);
+                    Toast.fire({ icon: 'success', title: `Order ${orNumber} updated successfully!` });
+                    showLoading(false);
+                    // Re-render dashboard or reports if needed (listeners should handle this)
+                } else if (result.isDenied) {
+                    // User chose to delete the order
+                    const { isConfirmed: deleteConfirmed } = await Swal.fire({
+                        title: 'Are you sure?',
+                        text: `You are about to permanently delete OR# ${orNumber}. This cannot be undone.`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, Delete It',
+                        confirmButtonColor: '#d33'
+                    });
+                    if (deleteConfirmed) {
+                        showLoading(true, 'Deleting order...');
+                        await db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).delete();
+                        Toast.fire({ icon: 'success', title: `Order ${orNumber} deleted.` });
+                        showLoading(false);
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error("Error editing transaction:", error);
+            Swal.fire('Error', `Failed to load or save transaction: ${error.message}`, 'error');
+            showLoading(false);
+        }
+    }
+
+    // Helper function for transaction editing popup: recalculates totals
+    function recalculateEditTransactionTotals() {
+        let currentTotal = 0;
+        document.querySelectorAll('#edit-cart-items-container .editable-cart-item input[type="number"]').forEach(input => {
+            const price = parseFloat(input.value);
+            if (!isNaN(price)) {
+                currentTotal += price;
+            }
+        });
+        document.getElementById('edit-total').value = currentTotal.toFixed(2);
+
+        const paymentType = document.getElementById('edit-paymentType').value;
+        const amountPaidInputEl = document.getElementById('edit-amountPaid');
+        let amountPaid = parseFloat(amountPaidInputEl.value);
+        let newBalanceDue = 0;
+
+        // Manage readOnly state for amountPaid based on paymentType
+        if (paymentType === 'collection') {
+            newBalanceDue = currentTotal;
+            amountPaidInputEl.value = '0.00'; // For collection, amountPaid is 0 initially
+            amountPaidInputEl.readOnly = true;
+        } else if (paymentType === 'down_payment') {
+            newBalanceDue = Math.max(0, currentTotal - amountPaid);
+            amountPaidInputEl.readOnly = false;
+        } else if (paymentType === 'paid') {
+            newBalanceDue = 0;
+            // if current amount paid is less than new total, adjust it to new total or keep as is if higher
+            if (isNaN(amountPaid) || amountPaid < currentTotal) {
+                 amountPaidInputEl.value = currentTotal.toFixed(2);
+                 amountPaid = currentTotal; // Update local variable for calculation
+            }
+            amountPaidInputEl.readOnly = false;
+        }
+        document.getElementById('edit-balanceDue').value = newBalanceDue.toFixed(2);
+    }
+
+    // Helper function for transaction editing popup: removes an item
+    async function removeEditedCartItem(button, orNumber, index) {
+        const { isConfirmed } = await Swal.fire({
+            title: 'Remove Item?',
+            text: 'Are you sure you want to remove this item?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, remove it!',
+            confirmButtonColor: '#d33'
+        });
+        if (isConfirmed) {
+            button.closest('.editable-cart-item').remove();
+            recalculateEditTransactionTotals();
+        }
+    }
+
+    // Helper function for transaction editing popup: adds a service
+    function addEditedCartItem() {
+        const select = document.getElementById('edit-add-service-select');
+        const selectedOption = select.options[select.selectedIndex];
+        const serviceId = selectedOption.value;
+        const serviceLabel = selectedOption.textContent.split(' (₱')[0]; // Extract base label
+        const servicePrice = parseFloat(selectedOption.dataset.price);
+        const serviceType = selectedOption.dataset.type;
+        const weightInput = document.getElementById('edit-add-service-weight');
+        let finalPrice = servicePrice;
+        let itemLabel = serviceLabel;
+
+        if (!serviceId) {
+            return Swal.fire('No Service Selected', 'Please select a service to add.', 'warning');
+        }
+
+        if (serviceType === 'per_kg') {
+            const weight = parseFloat(weightInput.value);
+            if (isNaN(weight) || weight <= 0) {
+                return Swal.fire('Invalid Weight', 'Please enter a valid weight in kg for this service.', 'warning');
+            }
+            finalPrice = weight * servicePrice;
+            itemLabel = `${serviceLabel} (${weight}kg)`;
+        }
+
+        const cartItemsContainer = document.getElementById('edit-cart-items-container');
+        const newItemDiv = document.createElement('div');
+        newItemDiv.className = 'editable-cart-item';
+        // Use a temporary index or just push, recalculation handles proper indexing for new saved array
+        const tempIndex = cartItemsContainer.children.length; // A temporary index for rendering, not used for actual storage.
+        newItemDiv.innerHTML = `
+            <span class="editable-cart-item-name">${itemLabel}</span>
+            <input type="number" step="0.01" class="border p-1 w-20 text-right" value="${finalPrice.toFixed(2)}" data-index="${tempIndex}" data-field="price">
+            <button class="text-red-500 ml-2" onclick="removeEditedCartItem(this, '${null}', ${tempIndex})">&times;</button>
+        `;
+        cartItemsContainer.appendChild(newItemDiv);
+
+        select.value = ''; // Reset select
+        weightInput.value = ''; // Reset weight
+        recalculateEditTransactionTotals();
+    }
+
 
     async function backupData() {
         showLoading(true, "Backing up all cloud data...");
@@ -2385,76 +2783,43 @@
 
     function triggerRestore() { Swal.fire({ title: 'Restore Data to Cloud?', text: 'This will overwrite ALL cloud data.', icon: 'warning', input: 'file', inputAttributes:{'accept':'application/json'}, showCancelButton:true, confirmButtonText:'Upload & Restore', confirmButtonColor:'#d33', }).then(r => r.isConfirmed && r.value && restoreData(r.value)); }
 
-    // =======================================================================
-    // ### THIS IS THE NEW, CORRECTED FUNCTION THAT FIXES THE "STUCK" ISSUE ###
-    // =======================================================================
     async function restoreData(file) {
         showLoading(true, "Reading backup file...");
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 let dataToRestore = JSON.parse(e.target.result);
-
                 if (dataToRestore.global_or_counter !== undefined || dataToRestore.shop_customers !== undefined) {
                     showLoading(true, "Old backup detected. Converting...");
                     Toast.fire({icon: 'info', title: 'Old backup detected, converting...'});
                     dataToRestore = transformOldBackupToNewFormat(dataToRestore);
                 }
-
                 showLoading(true, "Starting restore...");
-
-                // Helper function to commit data in chunks under 500 operations
                 const commitBatchInChunks = async (collectionName, data, idField) => {
                     let batch = db.batch();
                     let operationCount = 0;
                     const totalItems = data.length;
-
                     for (let i = 0; i < totalItems; i++) {
                         const item = data[i];
                         const docId = item[idField];
-                        if (!docId) {
-                            console.warn(`Skipping item in ${collectionName} due to missing ID:`, item);
-                            continue;
-                        }
+                        if (!docId) { console.warn(`Skipping item in ${collectionName} due to missing ID:`, item); continue; }
                         const docRef = db.collection(collectionName).doc(String(docId));
                         batch.set(docRef, item);
                         operationCount++;
-
-                        // Update UI feedback every 25 items for better responsiveness
-                        if (i % 25 === 0) {
-                           showLoading(true, `Restoring ${collectionName}... (${i + 1}/${totalItems})`);
-                        }
-
-                        // Commit batch when it's full and start a new one
-                        if (operationCount >= 499) {
-                            await batch.commit();
-                            batch = db.batch();
-                            operationCount = 0;
-                        }
+                        if (i % 25 === 0) { showLoading(true, `Restoring ${collectionName}... (${i + 1}/${totalItems})`); }
+                        if (operationCount >= 499) { await batch.commit(); batch = db.batch(); operationCount = 0; }
                     }
-
-                    // Commit any remaining operations in the final batch
-                    if (operationCount > 0) {
-                        await batch.commit();
-                    }
+                    if (operationCount > 0) { await batch.commit(); }
                 };
-
-                // Restore large collections in chunks
                 if (dataToRestore.services?.length) await commitBatchInChunks(COLLECTIONS.SERVICES, dataToRestore.services, 'id');
                 if (dataToRestore.customers?.length) await commitBatchInChunks(COLLECTIONS.CUSTOMERS, dataToRestore.customers, 'id');
                 if (dataToRestore.transactions?.length) await commitBatchInChunks(COLLECTIONS.TRANSACTIONS, dataToRestore.transactions, 'orNumber');
-
-                // Restore small collections in a single batch
                 showLoading(true, "Finalizing configuration...");
                 const finalBatch = db.batch();
                 dataToRestore.machineStatus?.forEach(m => finalBatch.set(db.collection(COLLECTIONS.MACHINE_STATUS).doc(m.id), m));
-                if (dataToRestore.config) {
-                    Object.entries(dataToRestore.config).forEach(([key, val]) => finalBatch.set(db.collection(COLLECTIONS.CONFIG).doc(key), val));
-                }
+                if (dataToRestore.config) { Object.entries(dataToRestore.config).forEach(([key, val]) => finalBatch.set(db.collection(COLLECTIONS.CONFIG).doc(key), val)); }
                 await finalBatch.commit();
-
                 Swal.fire('Success!', 'Data restored successfully. The application will now reload.', 'success').then(() => location.reload());
-
             } catch (err) {
                 console.error("Restore failed:", err);
                 Swal.fire('Error', `Restore failed. Error: ${err.message}`, 'error');
@@ -2466,86 +2831,33 @@
     }
 
     function transformOldBackupToNewFormat(oldData) {
-        const newData = {
-            services: [], customers: [], transactions: [],
-            config: {}, machineStatus: []
-        };
-
-        if (Array.isArray(oldData.shop_services)) {
-            newData.services = oldData.shop_services
-                .filter(s => s && typeof s.label === 'string' && s.label.trim() !== '')
-                .map(s => {
-                    const id = s.id ? String(s.id) : s.label.trim().replace(/\s+/g, '_').replace(/[^\w-]/g, '');
-                    return { ...s, id: id };
-                });
-        }
-
-        if (Array.isArray(oldData.shop_customers)) {
-            newData.customers = oldData.shop_customers
-                .filter(c => c && c.name)
-                .map(c => {
-                    const phone = c.phone || "";
-                    const invalidPhoneValues = ["none", "n", "n.", "no"];
-                    const isValidPhone = typeof phone === 'string' && phone.trim().length > 3 && !invalidPhoneValues.includes(phone.toLowerCase().trim());
-                    const id = isValidPhone ? phone : String(c.id);
-                    return { ...c, id: id };
-                });
-        }
-
+        const newData = { services: [], customers: [], transactions: [], config: {}, machineStatus: [] };
+        if (Array.isArray(oldData.shop_services)) { newData.services = oldData.shop_services.filter(s => s && typeof s.label === 'string' && s.label.trim() !== '').map(s => { const id = s.id ? String(s.id) : s.label.trim().replace(/\s+/g, '_').replace(/[^\w-]/g, ''); return { ...s, id: id }; }); }
+        if (Array.isArray(oldData.shop_customers)) { newData.customers = oldData.shop_customers.filter(c => c && c.name).map(c => { const phone = c.phone || ""; const invalidPhoneValues = ["none", "n", "n.", "no"]; const isValidPhone = typeof phone === 'string' && phone.trim().length > 3 && !invalidPhoneValues.includes(phone.toLowerCase().trim()); const id = isValidPhone ? phone : String(c.id); return { ...c, id: id }; }); }
         newData.machineStatus = oldData.machine_status || [];
         newData.config.shopSettings = oldData.shop_settings || {};
         newData.config.orCounter = { value: oldData.global_or_counter || 0 };
         newData.config.appPassword = { value: oldData.app_password || 'root' };
         newData.config.machineConfig = oldData.machine_config || { numWashers: 2, numDryers: 2 };
-
         const transactionMap = new Map();
-        for (const key in oldData) {
-            if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
-                if (Array.isArray(oldData[key])) {
-                    oldData[key].forEach(tx => {
-                        if (tx && tx.orNumber) transactionMap.set(tx.orNumber, tx);
-                    });
-                }
-            }
-        }
-
-        if (oldData.pending_pickups) {
-            const pending = Array.isArray(oldData.pending_pickups)
-                ? oldData.pending_pickups
-                : Object.values(oldData.pending_pickups);
-            pending.forEach(tx => {
-                if (tx && tx.orNumber) transactionMap.set(tx.orNumber, tx);
-            });
-        }
-
+        for (const key in oldData) { if (/^\d{4}-\d{2}-\d{2}$/.test(key)) { if (Array.isArray(oldData[key])) { oldData[key].forEach(tx => { if (tx && tx.orNumber) transactionMap.set(tx.orNumber, tx); }); } } }
+        if (oldData.pending_pickups) { const pending = Array.isArray(oldData.pending_pickups) ? oldData.pending_pickups : Object.values(oldData.pending_pickups); pending.forEach(tx => { if (tx && tx.orNumber) transactionMap.set(tx.orNumber, tx); }); }
         newData.transactions = Array.from(transactionMap.values()).map(tx => {
             let calculatedBalanceDue = 0;
-            if (tx.paymentType === 'collection') {
-                calculatedBalanceDue = tx.total;
-            } else {
-                calculatedBalanceDue = 0;
-            }
-
+            if (tx.paymentType === 'collection') { calculatedBalanceDue = tx.total; } else if (tx.paymentType === 'down_payment') { calculatedBalanceDue = Math.max(0, tx.total - (tx.amountPaid || 0)); } else { calculatedBalanceDue = 0;}
             const invalidPhoneValues = ["none", "n", "n.", "no"];
             let cleanPhone = tx.phone || "";
-            if (typeof cleanPhone === 'string' && invalidPhoneValues.includes(cleanPhone.toLowerCase().trim())) {
-                cleanPhone = "";
-            }
-
+            if (typeof cleanPhone === 'string' && invalidPhoneValues.includes(cleanPhone.toLowerCase().trim())) { cleanPhone = ""; }
             return {
                 ...tx,
                 phone: cleanPhone,
                 balanceDue: calculatedBalanceDue,
                 smsSent: tx.smsSent || false,
+                dashboardFinished: (tx.paymentType === 'paid' && !shopSettings.smsEnabled) || false, // Default for old fully paid orders
                 notes: tx.notes || "",
-                _searchableKeywords: [
-                    (tx.name || "").toLowerCase(),
-                    cleanPhone,
-                    tx.orNumber || ""
-                ].filter(Boolean)
+                _searchableKeywords: [(tx.name || "").toLowerCase(), cleanPhone, tx.orNumber || ""].filter(Boolean)
             };
         });
-
         console.log(`Transformed: ${newData.transactions.length} transactions, ${newData.customers.length} customers, and ${newData.services.length} services.`);
         return newData;
     }
@@ -2561,36 +2873,174 @@
         if(r.isConfirmed){ showLoading(true); await Promise.all([ 'transactions', 'customers', 'services', 'config', 'machineStatus' ].map(async coll => { const snap = await db.collection(coll).get(); const batch=db.batch(); snap.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); })); showLoading(false); Swal.fire('Factory Reset Complete','All data erased.','success').then(()=>location.reload()); }
     }
 
+    async function sendTestSms() {
+        // Read credentials DIRECTLY from the input fields for live testing
+        const apiKey = allElements.settingSmsApiKey.value.trim();
+        const deviceId = allElements.settingSmsDeviceId.value.trim();
+        const testPhoneNumber = allElements.smsTestPhoneNumber.value.trim();
+        const shopName = allElements.settingShopName.value.trim() || "Your Laundry Shop";
+
+        if (!apiKey || !deviceId) {
+            return Swal.fire('Missing Credentials', 'Please enter your TextBee API Key and Device ID in the fields above before sending a test.', 'warning');
+        }
+        if (!testPhoneNumber) {
+            return Swal.fire('Missing Phone Number', 'Please enter a phone number to send the test message to.', 'warning');
+        }
+
+        let formattedPhone = testPhoneNumber.replace(/\D/g, '');
+        if (formattedPhone.startsWith('09') && formattedPhone.length === 11) {
+            formattedPhone = '+63' + formattedPhone.substring(1);
+        } else if (formattedPhone.startsWith('639') && formattedPhone.length === 12) {
+            formattedPhone = '+' + formattedPhone;
+        }
+
+        if (!formattedPhone.startsWith('+639') || formattedPhone.length !== 13) {
+            return Swal.fire('Invalid Phone Format', `The phone number '${testPhoneNumber}' must be a valid Philippine mobile number (e.g., 09xxxxxxxxx).`, 'error');
+        }
+
+        const testMessage = `This is a test message from ${shopName}. Your SMS configuration is working!`;
+        const apiUrl = `https://api.textbee.dev/api/v1/gateway/devices/${deviceId}/send-sms`;
+
+        showLoading(true, 'Sending test SMS...');
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    recipients: [formattedPhone],
+                    message: testMessage
+                })
+            });
+
+            if (response.ok) {
+                Swal.fire('Success!', 'Test SMS sent successfully. Check the target phone.', 'success');
+            } else {
+                const errorResult = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
+                Swal.fire('Test Failed', `The API returned an error: ${errorResult.message || response.statusText}.`, 'error');
+            }
+        } catch (error) {
+            Swal.fire('Network Error', `Could not send the test message. Please check your internet connection. Error: ${error.message}`, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
     async function sendPickupReadySms(orNumber, customerPhone, customerName) {
         if (!shopSettings.smsEnabled) return;
-        if (!shopSettings.smsApiUrl || !shopSettings.smsPickupMessageTemplate) return Swal.fire('SMS Not Configured', 'Please set up SMS API URL and template in Owner Settings.', 'warning');
+        const { smsApiKey, smsDeviceId, smsPickupMessageTemplate } = shopSettings;
+
+        if (!smsApiKey || !smsDeviceId) {
+            return Swal.fire('SMS Not Configured', 'Please set your TextBee API Key and Device ID in Owner Settings > Shop Config.', 'warning');
+        }
         if (!customerPhone) return Swal.fire('Error', `Customer phone number is missing for OR# ${orNumber}.`, 'error');
 
         let formattedPhone = customerPhone.replace(/\D/g, '');
-        if (formattedPhone.startsWith('63')) formattedPhone = '0' + formattedPhone.substring(2);
-        else if (formattedPhone.length === 10) formattedPhone = '0' + formattedPhone;
-        if (formattedPhone.length !== 11 || !formattedPhone.startsWith('09')) return Swal.fire('Invalid Phone Format', `Invalid phone format: ${customerPhone}`, 'error');
+        if (formattedPhone.startsWith('09') && formattedPhone.length === 11) {
+            formattedPhone = '+63' + formattedPhone.substring(1);
+        } else if (formattedPhone.startsWith('639') && formattedPhone.length === 12) {
+            formattedPhone = '+' + formattedPhone;
+        }
 
-        let message = shopSettings.smsPickupMessageTemplate.replace(/\[Customer Name\]/g, customerName).replace(/\[OR Number\]/g, orNumber).replace(/\[Shop Name\]/g, shopSettings.name);
+        if (!formattedPhone.startsWith('+639') || formattedPhone.length !== 13) {
+            return Swal.fire('Invalid Phone Format', `The phone number '${customerPhone}' must be in 09xxxxxxxxx format.`, 'error');
+        }
+
+        let message = smsPickupMessageTemplate
+            .replace(/\[Customer Name\]/g, customerName)
+            .replace(/\[OR Number\]/g, orNumber)
+            .replace(/\[Shop Name\]/g, shopSettings.name);
+
         const { isConfirmed } = await Swal.fire({
-            title: 'Send "Ready for Pickup" SMS?', html: `<p>To: <strong>${customerName} (${formattedPhone})</strong></p><p>Message:</p><p class="text-left bg-gray-100 p-3 rounded">${message}</p>`,
-            icon: 'question', showCancelButton: true, confirmButtonText: 'Yes, Send SMS', confirmButtonColor: '#8a2be2'
+            title: 'Send "Ready for Pickup" SMS?',
+            html: `<p>To: <strong>${customerName} (${formattedPhone})</strong></p><p>Message:</p><p class="text-left bg-gray-100 p-3 rounded">${message}</p>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Send SMS',
+            confirmButtonColor: '#8a2be2'
         });
+
         if (!isConfirmed) return;
+
         showLoading(true, 'Sending SMS...');
         try {
-            const response = await fetch(`${shopSettings.smsApiUrl}n=${formattedPhone}&t=${encodeURIComponent(message)}`);
+            const apiUrl = `https://api.textbee.dev/api/v1/gateway/devices/${smsDeviceId}/send-sms`;
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    recipients: [formattedPhone],
+                    message: message
+                })
+            });
+
             if (response.ok) {
-                const result = await response.json().catch(() => ({}));
-                if (result.status === 'success' || result.success) {
-                    Toast.fire({ icon: 'success', title: 'SMS sent successfully!' });
-                    await db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).update({ smsSent: true });
-                } else { Swal.fire('SMS Failed', result.error || 'Failed to send SMS via API.', 'error'); }
-            } else { Swal.fire('SMS Failed', `Server responded with status ${response.status}.`, 'error'); }
-        } catch (error) { Swal.fire('SMS Error', `An error occurred: ${error.message}.`, 'error'); }
-        finally { showLoading(false); }
+                Toast.fire({ icon: 'success', title: 'SMS sent successfully!' });
+                const txRef = db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber);
+                const currentTx = (await txRef.get()).data();
+                
+                // Update smsSent to true
+                let updateData = { smsSent: true };
+
+                // If the order is fully paid and had no balance due, and SMS was just sent,
+                // mark it as finished to remove from dashboard.
+                if (currentTx.paymentType === 'paid' && currentTx.balanceDue === 0) {
+                    updateData.dashboardFinished = true;
+                }
+                
+                await txRef.update(updateData);
+
+            } else {
+                const errorResult = await response.json().catch(() => ({ message: 'Unknown API error' }));
+                Swal.fire('SMS Failed', `API Error: ${errorResult.message || response.statusText}.`, 'error');
+            }
+        } catch (error) {
+            Swal.fire('SMS Error', `An error occurred: ${error.message}.`, 'error');
+        } finally {
+            showLoading(false);
+        }
     }
 
+    // Helper function to get sales data for a period (used in reports)
+    async function getSalesDataForPeriod(startDate, endDate) {
+        const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
+            .where('time', '>=', startDate.toISOString())
+            .where('time', '<=', endDate.toISOString())
+            .get();
+        return snapshot.docs.map(doc => doc.data());
+    }
+
+    // Helper function to get collected data for a period (used in reports)
+    async function getCollectedDataForPeriod(startDate, endDate) {
+        const collectedDataMap = {}; // Date string -> collected amount for that day
+        const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
+            .where('paymentTimestamp', '>=', startDate.toISOString())
+            .where('paymentTimestamp', '<=', endDate.toISOString())
+            .get();
+
+        snapshot.docs.forEach(doc => {
+            const tx = doc.data();
+            const paymentDay = dayjs(tx.paymentTimestamp).tz(TIMEZONE).format('YYYY-MM-DD');
+            let collectedAmount = 0;
+
+            if (tx.balancePaidAmount) { // It was a balance payment
+                 collectedAmount = tx.balancePaidAmount;
+            } else if (tx.paymentType === 'down_payment') { // It was an initial down payment
+                 collectedAmount = tx.amountPaid;
+            } else if (tx.paymentType === 'paid' && !tx.balancePaidAmount) { // It was a full payment from the start
+                 collectedAmount = tx.total; // The actual revenue is the total, not amountPaid (which includes change)
+            }
+            collectedDataMap[paymentDay] = (collectedDataMap[paymentDay] || 0) + collectedAmount;
+        });
+        return collectedDataMap;
+    }
+    
     // --- App Initializer ---
     document.addEventListener('DOMContentLoaded', promptStaffLogin);
   </script>
