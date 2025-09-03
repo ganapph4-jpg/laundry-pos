@@ -337,9 +337,9 @@
                     <button onclick="saveShopInfo()" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 w-full">Save Shop Info</button>
                 </div>
                 
-                <!-- ### UPDATED AND FINAL SMS Settings Section ### -->
+                <!-- ### MODIFIED SMS Settings Section ### -->
                 <div class="p-4 border rounded border-purple-300 bg-purple-50">
-                    <h3 class="text-lg font-semibold mb-3 text-purple-800">SMS Notification Settings (TextBee)</h3>
+                    <h3 class="text-lg font-semibold mb-3 text-purple-800">SMS Notification Settings (SMS Gate)</h3>
 
                     <div class="flex items-center justify-between mb-4">
                         <label for="settingSmsEnabled" class="font-medium">Enable SMS Features</label>
@@ -350,16 +350,16 @@
                     </div>
 
                     <div id="sms-config-details" class="space-y-3">
-                        <p class="text-sm text-gray-600 mb-3">Configure your TextBee API and custom message for pickup notifications. Use <code>[Customer Name]</code>, <code>[OR Number]</code>, and <code>[Shop Name]</code> as placeholders.</p>
+                        <p class="text-sm text-gray-600 mb-3">Configure your SMS Gate API and custom message for pickup notifications. Use <code>[Customer Name]</code>, <code>[OR Number]</code>, and <code>[Shop Name]</code> as placeholders.</p>
                         
                         <div>
-                            <label for="settingSmsApiKey" class="block font-medium">TextBee API Key</label>
-                            <input id="settingSmsApiKey" type="password" placeholder="Enter your TextBee API Key" class="border p-2 w-full mt-1">
+                            <label for="settingSmsUsername" class="block font-medium">API Username</label>
+                            <input id="settingSmsUsername" type="text" placeholder="Enter your SMS Gate API Username" class="border p-2 w-full mt-1">
                         </div>
 
                         <div>
-                            <label for="settingSmsDeviceId" class="block font-medium">TextBee Device ID</label>
-                            <input id="settingSmsDeviceId" type="text" placeholder="Enter your TextBee Device ID" class="border p-2 w-full mt-1">
+                            <label for="settingSmsPassword" class="block font-medium">API Password</label>
+                            <input id="settingSmsPassword" type="password" placeholder="Enter your SMS Gate API Password" class="border p-2 w-full mt-1">
                         </div>
 
                         <div>
@@ -513,8 +513,8 @@
         // SMS elements
         settingSmsEnabled: document.getElementById('settingSmsEnabled'),
         smsConfigDetails: document.getElementById('sms-config-details'),
-        settingSmsApiKey: document.getElementById('settingSmsApiKey'),
-        settingSmsDeviceId: document.getElementById('settingSmsDeviceId'),
+        settingSmsUsername: document.getElementById('settingSmsUsername'), // MODIFIED
+        settingSmsPassword: document.getElementById('settingSmsPassword'), // MODIFIED
         smsTestPhoneNumber: document.getElementById('smsTestPhoneNumber'),
         settingSmsPickupMessageTemplate: document.getElementById('settingSmsPickupMessageTemplate'),
         customerPromoBtn: document.getElementById('customer-promo-btn'),
@@ -614,8 +614,8 @@
             const defaultSettings = {
                 name: "MAMA'S LOVE LAUNDRY", address: "123 Laundry St, Manila", phone: "0912-345-6789", qrUrl: "",
                 smsEnabled: false,
-                smsApiKey: "",
-                smsDeviceId: "",
+                smsUsername: "", // MODIFIED
+                smsPassword: "", // MODIFIED
                 smsPickupMessageTemplate: "Hi [Customer Name], your Mama's Love Laundry order #[OR Number] is now ready for pickup! Thank you from [Shop Name]."
             };
             if (doc.exists) {
@@ -976,10 +976,11 @@
         Toast.fire({ icon: 'success', title: 'Shop info saved!' });
     }
 
+    // ### MODIFIED ### SMS Functions
     function renderSmsSettings() {
         allElements.settingSmsEnabled.checked = shopSettings.smsEnabled;
-        allElements.settingSmsApiKey.value = shopSettings.smsApiKey || '';
-        allElements.settingSmsDeviceId.value = shopSettings.smsDeviceId || '';
+        allElements.settingSmsUsername.value = shopSettings.smsUsername || '';
+        allElements.settingSmsPassword.value = shopSettings.smsPassword || '';
         allElements.settingSmsPickupMessageTemplate.value = shopSettings.smsPickupMessageTemplate || '';
         toggleSmsSettings(false); // Update UI without saving
     }
@@ -987,8 +988,8 @@
     async function saveSmsSettings() {
         const newSmsSettings = {
             smsEnabled: allElements.settingSmsEnabled.checked,
-            smsApiKey: allElements.settingSmsApiKey.value.trim(),
-            smsDeviceId: allElements.settingSmsDeviceId.value.trim(),
+            smsUsername: allElements.settingSmsUsername.value.trim(),
+            smsPassword: allElements.settingSmsPassword.value.trim(),
             smsPickupMessageTemplate: allElements.settingSmsPickupMessageTemplate.value.trim()
         };
         await db.collection(COLLECTIONS.CONFIG).doc('shopSettings').update(newSmsSettings);
@@ -2872,16 +2873,16 @@
         const r = await Swal.fire({title:'FACTORY RESET?',text:'This deletes EVERYTHING from the cloud.',icon:'error',showCancelButton:true,confirmButtonColor:'#d33',confirmButtonText:'Yes, Delete Everything'});
         if(r.isConfirmed){ showLoading(true); await Promise.all([ 'transactions', 'customers', 'services', 'config', 'machineStatus' ].map(async coll => { const snap = await db.collection(coll).get(); const batch=db.batch(); snap.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); })); showLoading(false); Swal.fire('Factory Reset Complete','All data erased.','success').then(()=>location.reload()); }
     }
-
+    
+    // ### MODIFIED ### SMS Sending Functions for SMS Gate API
     async function sendTestSms() {
-        // Read credentials DIRECTLY from the input fields for live testing
-        const apiKey = allElements.settingSmsApiKey.value.trim();
-        const deviceId = allElements.settingSmsDeviceId.value.trim();
+        const username = allElements.settingSmsUsername.value.trim();
+        const password = allElements.settingSmsPassword.value.trim();
         const testPhoneNumber = allElements.smsTestPhoneNumber.value.trim();
         const shopName = allElements.settingShopName.value.trim() || "Your Laundry Shop";
 
-        if (!apiKey || !deviceId) {
-            return Swal.fire('Missing Credentials', 'Please enter your TextBee API Key and Device ID in the fields above before sending a test.', 'warning');
+        if (!username || !password) {
+            return Swal.fire('Missing Credentials', 'Please enter your API Username and Password in the fields above before sending a test.', 'warning');
         }
         if (!testPhoneNumber) {
             return Swal.fire('Missing Phone Number', 'Please enter a phone number to send the test message to.', 'warning');
@@ -2894,24 +2895,25 @@
             formattedPhone = '+' + formattedPhone;
         }
 
-        if (!formattedPhone.startsWith('+639') || formattedPhone.length !== 13) {
-            return Swal.fire('Invalid Phone Format', `The phone number '${testPhoneNumber}' must be a valid Philippine mobile number (e.g., 09xxxxxxxxx).`, 'error');
+        if (!formattedPhone.startsWith('+639')) {
+             return Swal.fire('Invalid Phone Format', `The phone number '${testPhoneNumber}' must be a valid Philippine mobile number (e.g., +639xxxxxxxxx).`, 'error');
         }
 
         const testMessage = `This is a test message from ${shopName}. Your SMS configuration is working!`;
-        const apiUrl = `https://api.textbee.dev/api/v1/gateway/devices/${deviceId}/send-sms`;
+        const PROXY_URL = 'https://corsproxy.io/?';
+        const API_URL = PROXY_URL + encodeURIComponent('https://api.sms-gate.app/3rdparty/v1/messages');
 
         showLoading(true, 'Sending test SMS...');
         try {
-            const response = await fetch(apiUrl, {
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey
+                    'Authorization': 'Basic ' + btoa(username + ':' + password),
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    recipients: [formattedPhone],
-                    message: testMessage
+                    message: testMessage,
+                    phoneNumbers: [formattedPhone]
                 })
             });
 
@@ -2930,10 +2932,10 @@
 
     async function sendPickupReadySms(orNumber, customerPhone, customerName) {
         if (!shopSettings.smsEnabled) return;
-        const { smsApiKey, smsDeviceId, smsPickupMessageTemplate } = shopSettings;
+        const { smsUsername, smsPassword, smsPickupMessageTemplate } = shopSettings;
 
-        if (!smsApiKey || !smsDeviceId) {
-            return Swal.fire('SMS Not Configured', 'Please set your TextBee API Key and Device ID in Owner Settings > Shop Config.', 'warning');
+        if (!smsUsername || !smsPassword) {
+            return Swal.fire('SMS Not Configured', 'Please set your API Username and Password in Owner Settings > Shop Config.', 'warning');
         }
         if (!customerPhone) return Swal.fire('Error', `Customer phone number is missing for OR# ${orNumber}.`, 'error');
 
@@ -2944,8 +2946,8 @@
             formattedPhone = '+' + formattedPhone;
         }
 
-        if (!formattedPhone.startsWith('+639') || formattedPhone.length !== 13) {
-            return Swal.fire('Invalid Phone Format', `The phone number '${customerPhone}' must be in 09xxxxxxxxx format.`, 'error');
+        if (!formattedPhone.startsWith('+639')) {
+            return Swal.fire('Invalid Phone Format', `The phone number '${customerPhone}' must be in a valid format (e.g., +639xxxxxxxxx).`, 'error');
         }
 
         let message = smsPickupMessageTemplate
@@ -2966,17 +2968,18 @@
 
         showLoading(true, 'Sending SMS...');
         try {
-            const apiUrl = `https://api.textbee.dev/api/v1/gateway/devices/${smsDeviceId}/send-sms`;
+            const PROXY_URL = 'https://corsproxy.io/?';
+            const API_URL = PROXY_URL + encodeURIComponent('https://api.sms-gate.app/3rdparty/v1/messages');
             
-            const response = await fetch(apiUrl, {
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey
+                    'Authorization': 'Basic ' + btoa(smsUsername + ':' + smsPassword),
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    recipients: [formattedPhone],
-                    message: message
+                    message: message,
+                    phoneNumbers: [formattedPhone]
                 })
             });
 
@@ -2985,11 +2988,8 @@
                 const txRef = db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber);
                 const currentTx = (await txRef.get()).data();
                 
-                // Update smsSent to true
                 let updateData = { smsSent: true };
 
-                // If the order is fully paid and had no balance due, and SMS was just sent,
-                // mark it as finished to remove from dashboard.
                 if (currentTx.paymentType === 'paid' && currentTx.balanceDue === 0) {
                     updateData.dashboardFinished = true;
                 }
@@ -3006,6 +3006,7 @@
             showLoading(false);
         }
     }
+
 
     // Helper function to get sales data for a period (used in reports)
     async function getSalesDataForPeriod(startDate, endDate) {
@@ -3045,5 +3046,4 @@
     document.addEventListener('DOMContentLoaded', promptStaffLogin);
   </script>
 </body>
-</html>
-```
+</html>```
