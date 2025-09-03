@@ -190,10 +190,10 @@
         <div id="find-order-section" class="bg-white p-4 rounded shadow mt-4">
         <h2 class="text-lg font-bold mb-2 text-indigo-700">Find a Specific Order</h2>
         <div class="flex gap-2 mt-1">
-            <input type="text" id="searchInput" oninput="searchTransactions()" placeholder="Search by OR #, Phone, or Name" class="border p-2 w-full" />
-            <!-- MODIFIED SEARCH BUTTON HERE -->
-            <button onclick="openSearchPopup()" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 flex items-center justify-center">
+            <input type="text" id="searchInput" placeholder="Type OR#, Name, or Phone and click Search" class="border p-2 w-full" />
+            <button onclick="searchTransactions()" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 flex items-center justify-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <span>Search</span>
             </button>
             <button onclick="clearSearch()" class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500">Clear</button>
         </div>
@@ -339,7 +339,15 @@
                             </div>
 
                             <div>
-                                <h5 class="font-bold text-purple-800 mb-2">Daily Performance Breakdown</h5>
+                                <div class="flex justify-between items-center mb-2">
+                                    <h5 class="font-bold text-purple-800">Daily Performance Breakdown</h5>
+                                    <div class="relative w-1/2">
+                                        <input type="text" id="monthly-report-search-input" oninput="filterMonthlyReportTable(this.value)" placeholder="Search all transactions in this month..." class="border p-2 w-full rounded-md shadow-sm pl-8 text-sm">
+                                        <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div id="daily-breakdown-table" class="max-h-64 overflow-y-auto border rounded"></div>
                             </div>
                         </div>
@@ -505,6 +513,7 @@
     let idleTimer; // For auto-lock
     const TIMEZONE = "Asia/Manila";
     let cancelPromoSend = false; // Flag for promo cancellation
+    let monthlyReportTransactionCache = [];
 
     // --- BT --- Bluetooth Global State ---
     let bluetoothDevice = null;
@@ -608,6 +617,12 @@
         allElements.nameEl.addEventListener('input', debouncedSearchCustomers);
         allElements.phoneEl.addEventListener('input', debouncedSearchCustomers);
         allElements.pickupSearchInput.addEventListener('input', () => renderPickupView());
+        allElements.searchInputEl.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); 
+                searchTransactions();
+            }
+        });
 
         // Setup default report dates
         allElements.reviewDateEl.value = dayjs().tz(TIMEZONE).format("YYYY-MM-DD");
@@ -1882,11 +1897,11 @@
         });
     }
 
-    async function searchTransactions(isButtonClick = false, manageLoading = true) {
+    async function searchTransactions() {
         const term = allElements.searchInputEl.value.toLowerCase().trim();
         if (!term) { allElements.searchResultsEl.innerHTML = ''; return; }
 
-        if (manageLoading) showLoading(true);
+        showLoading(true, `Searching for "${allElements.searchInputEl.value}"...`);
         allElements.searchResultsEl.innerHTML = '';
 
         try {
@@ -1896,7 +1911,9 @@
 
             matches.sort((a, b) => new Date(b.time) - new Date(a.time));
 
-            matches.forEach(tx => renderTransaction(tx, allElements.searchResultsEl));
+            // ### MODIFIED: Pass `false` to hide the Edit button for staff ###
+            matches.forEach(tx => renderTransaction(tx, allElements.searchResultsEl, false)); 
+            
             if(matches.length === 0) { allElements.searchResultsEl.innerHTML = '<p class="text-center text-gray-500 p-4">No matching orders found.</p>'; }
 
         } catch (error) {
@@ -1904,31 +1921,7 @@
             Swal.fire('Search Error', `An error occurred during search: ${error.message}`, 'error');
             allElements.searchResultsEl.innerHTML = '<p class="text-center text-red-500 p-4">An error occurred.</p>';
         } finally {
-            if (manageLoading) showLoading(false);
-        }
-    }
-
-    async function openSearchPopup() {
-        const { value: searchTerm } = await Swal.fire({
-            title: 'Search Order',
-            input: 'text',
-            inputPlaceholder: 'Enter OR #, Phone, or Name',
-            showCancelButton: true,
-            confirmButtonText: 'Search',
-            showLoaderOnConfirm: true,
-            preConfirm: (term) => {
-                if (!term || term.trim() === '') {
-                    Swal.showValidationMessage('Please enter a search term');
-                    return false;
-                }
-                return term.trim();
-            },
-            allowOutsideClick: () => !Swal.isLoading()
-        });
-
-        if (searchTerm) {
-            allElements.searchInputEl.value = searchTerm;
-            await searchTransactions(true, true);
+            showLoading(false);
         }
     }
 
@@ -1937,12 +1930,12 @@
         allElements.searchResultsEl.innerHTML = '';
     }
 
-    function renderTransaction(tx, container) {
+    // ### MODIFIED: Added `allowEditing` parameter to conditionally show the Edit button ###
+    function renderTransaction(tx, container, allowEditing = true) {
         const card = document.createElement('div');
         let statusTag, statusTagColor, payButtonHtml = '', smsButtonHtml = '';
         let displayAmount;
 
-        // Ensure new fields exist for old data
         if (tx.balanceDue === undefined) { tx.balanceDue = Math.max(0, tx.total - (tx.amountPaid || 0)); }
         if (tx.smsSent === undefined) tx.smsSent = false;
         if (tx.dashboardFinished === undefined) tx.dashboardFinished = false;
@@ -1953,7 +1946,7 @@
             statusTag = 'Down Payment'; statusTagColor = 'bg-blue-200 text-blue-800';
             displayAmount = `${tx.amountPaid.toFixed(2)} (Bal: ${tx.balanceDue.toFixed(2)})`;
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.balanceDue}, 'balance_paid')" class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">Pay Balance</button>`;
-        } else { // 'collection'
+        } else { 
             statusTag = 'For Collection'; statusTagColor = 'bg-yellow-200 text-yellow-800';
             displayAmount = tx.balanceDue.toFixed(2);
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.total}, 'paid')" class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">Mark as Paid</button>`;
@@ -1962,6 +1955,9 @@
         if (shopSettings.smsEnabled && tx.phone) {
              smsButtonHtml = tx.smsSent ? `<button disabled class="bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs ml-2">SMS Sent</button>` : `<button onclick="sendPickupReadySms('${tx.orNumber}', '${tx.phone}', '${tx.name}')" class="bg-purple-500 text-white px-3 py-1 rounded text-xs hover:bg-purple-600 ml-2">Send SMS</button>`;
         }
+
+        // Conditionally create the edit button HTML
+        const editButtonHtml = allowEditing ? `<button onclick='editTransaction("${tx.orNumber}")' class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">Edit</button>` : '';
 
         card.className = 'p-3 bg-white border rounded shadow-sm mb-2';
         card.innerHTML = `
@@ -1980,7 +1976,7 @@
             <div class="mt-2 text-xs">${tx.cart.map(i => i.label).join(', ')}</div>
             <div class="mt-2 pt-2 border-t flex justify-end gap-2">
                 ${payButtonHtml} ${smsButtonHtml}
-                <button onclick='editTransaction("${tx.orNumber}")' class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">Edit</button>
+                ${editButtonHtml}
                 <button onclick='showReceipt(${JSON.stringify(tx)})' class="bg-gray-200 px-3 py-1 rounded text-xs hover:bg-gray-300">View Receipt</button>
             </div>
         `;
@@ -2007,11 +2003,9 @@
                     paymentType: 'paid', amountPaid: (currentTransaction.amountPaid || 0) + amountPaidInput, change: change,
                     paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0
                 };
-                // If SMS is disabled, mark as dashboardFinished immediately
                 if (!shopSettings.smsEnabled) {
                     updatedData.dashboardFinished = true;
                 } else {
-                    // If SMS is enabled, it will await SMS send, so dashboardFinished remains false
                     updatedData.dashboardFinished = false;
                 }
 
@@ -2021,18 +2015,16 @@
                     balancePaidAmount: amountPaidInput, change: change,
                     paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0
                 };
-                // If SMS is disabled, mark as dashboardFinished immediately
                  if (!shopSettings.smsEnabled) {
                     updatedData.dashboardFinished = true;
                 } else {
-                    // If SMS is enabled, it will await SMS send, so dashboardFinished remains false
                     updatedData.dashboardFinished = false;
                 }
             }
 
             await txRef.update(updatedData);
 
-            if (allElements.searchInputEl.value) { await searchTransactions(true, false); }
+            if (allElements.searchInputEl.value) { await searchTransactions(); }
             Toast.fire({ icon: 'success', title: `Order ${orNumber} marked as Paid!` });
 
         } catch (error) {
@@ -2043,18 +2035,23 @@
         }
     }
 
+    function searchAllOrdersFromPickup(searchTerm) {
+        showView('pos-view');
+        allElements.searchInputEl.value = searchTerm;
+        searchTransactions(); 
+        allElements.findOrderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     async function renderPickupView() {
         const container = allElements.pendingListContainer;
         container.innerHTML = '<div class="inline-loader"></div>';
         const searchTerm = allElements.pickupSearchInput.value.toLowerCase();
 
-        // Query 1: Orders with balance due (For Collection, Down Payment)
         const pendingOrdersSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
                                               .where('balanceDue', '>', 0)
                                               .get();
         let ordersWithBalanceDue = pendingOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
-        // Query 2: Fully paid orders that are waiting for SMS notification and not yet finished
         const paidAwaitingSmsSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
                                                .where('paymentType', '==', 'paid')
                                                .where('smsSent', '==', false)
@@ -2065,7 +2062,6 @@
 
         let allDashboardOrders = [...ordersWithBalanceDue, ...paidAwaitingSmsOrders];
 
-        // Filter by search term
         if (searchTerm) {
             allDashboardOrders = allDashboardOrders.filter(tx =>
                 tx.name.toLowerCase().includes(searchTerm) ||
@@ -2077,8 +2073,20 @@
         container.innerHTML = '';
 
         if (allDashboardOrders.length === 0) {
-            const message = searchTerm ? `No dashboard orders match your filter.` : `No orders waiting for customer action.`;
-            container.innerHTML = `<p class="text-center text-gray-500 p-4">${message}</p>`;
+            let messageHtml = '';
+            if (searchTerm) {
+                messageHtml = `
+                    <div class="text-center p-4 bg-white rounded-lg shadow-sm">
+                        <p class="text-gray-600 mb-3 font-semibold">No PENDING orders match your filter.</p>
+                        <button onclick="searchAllOrdersFromPickup('${searchTerm.replace(/'/g, "\\'")}')" class="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 shadow-sm font-semibold">
+                            Search All Historical Orders for "${searchTerm.replace(/'/g, "\\'")}"
+                        </button>
+                    </div>
+                `;
+            } else {
+                messageHtml = `<p class="text-center text-gray-500 p-4">No orders waiting for customer action.</p>`;
+            }
+            container.innerHTML = messageHtml;
             return;
         }
 
@@ -2094,7 +2102,6 @@
     }
 
     function renderPickupCard(tx, container) {
-        // Guard against rendering already finished orders
         if (tx.dashboardFinished) {
             return;
         }
@@ -2106,24 +2113,21 @@
         else { displayTime = timeObj.format('MMM DD, YYYY'); timeSuffix = ''; }
 
         let bgColor, statusTag, statusTagColor, totalDisplay, payButtonHtml = '', smsButtonHtml = '';
-        let viewReceiptButtonHtml = ''; // Initialize the receipt button HTML
+        let viewReceiptButtonHtml = ''; 
         const customerNameColor = getColorForText(tx.name);
 
-        // Ensure new fields exist for old data
         if (tx.balanceDue === undefined) tx.balanceDue = Math.max(0, tx.total - (tx.amountPaid || 0));
         if (tx.smsSent === undefined) tx.smsSent = false;
-        if (tx.dashboardFinished === undefined) tx.dashboardFinished = false; // Should have been initialized but safe to check
+        if (tx.dashboardFinished === undefined) tx.dashboardFinished = false;
 
         if (tx.paymentType === 'down_payment') {
             bgColor = 'bg-blue-50 border-blue-200'; statusTag = 'Down Payment'; statusTagColor = 'bg-blue-200 text-blue-800';
             totalDisplay = `₱${tx.amountPaid.toFixed(2)} (Bal: ₱${tx.balanceDue.toFixed(2)})`;
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.balanceDue}, 'balance_paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Pay Balance</button>`;
-            // No View Receipt button for pending payment orders on dashboard
         } else if (tx.paymentType === 'paid') {
             bgColor = 'bg-green-50 border-green-200'; statusTag = 'Fully Paid'; statusTagColor = 'bg-green-200 text-green-800';
             totalDisplay = `₱${tx.total.toFixed(2)}`;
-            payButtonHtml = ''; // No payment button for already paid orders
-            // For fully paid orders, the dashboard only serves for SMS and viewing receipt
+            payButtonHtml = ''; 
             viewReceiptButtonHtml = `<button onclick='showReceipt(${JSON.stringify(tx)})' class="bg-gray-200 p-2 rounded hover:bg-gray-300" title="View Receipt">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     </button>`;
@@ -2132,7 +2136,6 @@
             bgColor = 'bg-yellow-50 border-yellow-200'; statusTag = 'For Collection'; statusTagColor = 'bg-yellow-200 text-yellow-800';
             totalDisplay = `₱${tx.balanceDue.toFixed(2)}`;
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.total}, 'paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Mark as Paid</button>`;
-            // No View Receipt button for pending payment orders on dashboard
         }
 
         if (shopSettings.smsEnabled && tx.phone) {
@@ -2212,6 +2215,7 @@
         }
         const total = dailyData.reduce((sum, tx) => sum + tx.total, 0);
         container.innerHTML = `<p class="font-bold text-lg p-2 bg-gray-100 rounded">Total for ${dateKey}: ₱${total.toFixed(2)}</p>`;
+        // Owner can edit from here, so we use the default `allowEditing = true`
         dailyData.forEach(tx => renderTransaction(tx, container));
         showLoading(false);
     }
@@ -2258,7 +2262,6 @@
         } catch (error) { showLoading(false); console.error("Excel report failed:", error); Swal.fire('Error', 'Failed to generate report.', 'error'); }
     }
     
-    // This is the new master function that gets the month from the input and calls the report generator.
     async function generateNewMonthlyReport() {
         const reportMonthInput = document.getElementById('reportMonth');
         if (!reportMonthInput.value) {
@@ -2268,14 +2271,16 @@
         const container = document.getElementById('monthly-report-output');
         showLoading(true, `Generating report for ${dayjs(reportMonthInput.value).format("MMMM YYYY")}...`);
         
-        await generateMonthlyReport(reportMonthInput.value); // Pass the selected month
+        await generateMonthlyReport(reportMonthInput.value); 
         
         container.classList.remove('hidden');
         showLoading(false);
     }
 
-    // This is the new, upgraded report generation logic.
-    async function generateMonthlyReport(selectedMonth) { // Now accepts a month parameter
+    async function generateMonthlyReport(selectedMonth) { 
+        monthlyReportTransactionCache = [];
+        document.getElementById('monthly-report-search-input').value = ''; 
+
         const now = dayjs(selectedMonth).tz(TIMEZONE);
         const currentMonthStart = now.startOf('month');
         const currentMonthEnd = now.endOf('month');
@@ -2284,7 +2289,6 @@
         const prevYearMonthStart = now.subtract(1, 'year').startOf('month');
         const prevYearMonthEnd = now.subtract(1, 'year').endOf('month');
 
-        // Update report title
         document.getElementById('monthly-report-title').textContent = `Monthly Report for ${now.format("MMMM YYYY")}`;
 
         const [currentMonthSales, prevMonthSales, prevYearMonthSales, collectedDataMap] = await Promise.all([
@@ -2294,7 +2298,8 @@
             getCollectedDataForPeriod(currentMonthStart, currentMonthEnd)
         ]);
 
-        // --- KPI Calculations ---
+        monthlyReportTransactionCache = [...currentMonthSales]; 
+
         const totalCollected = Object.values(collectedDataMap).reduce((sum, val) => sum + val, 0);
         const currentTotalSales = currentMonthSales.reduce((s, t) => s + t.total, 0);
         const currentTotalOrders = currentMonthSales.length;
@@ -2308,7 +2313,6 @@
         document.getElementById('monthlyTotalOrders').textContent = currentTotalOrders.toLocaleString();
         document.getElementById('monthlyAvgSale').textContent = `₱${currentAvgSale.toFixed(2)}`;
 
-        // --- Comparison Calculations ---
         const prevMonthTotalSales = prevMonthSales.reduce((s, t) => s + t.total, 0);
         const prevYearMonthTotalSales = prevYearMonthSales.reduce((s, t) => s + t.total, 0);
         const renderComparison = (c, p) => {
@@ -2319,8 +2323,7 @@
         document.getElementById('vsPrevMonth').innerHTML = renderComparison(currentTotalSales, prevMonthTotalSales);
         document.getElementById('vsPrevYear').innerHTML = renderComparison(currentTotalSales, prevYearMonthTotalSales);
 
-        // --- Weekly Performance Analysis ---
-        const dayOfWeekSales = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 }; // Sun-Sat
+        const dayOfWeekSales = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 }; 
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         currentMonthSales.forEach(tx => {
             const dayIndex = dayjs(tx.time).tz(TIMEZONE).day();
@@ -2335,7 +2338,6 @@
         document.getElementById('busiestDay').textContent = dayNames[busiestDayIndex];
         document.getElementById('quietestDay').textContent = dayNames[quietestDayIndex];
 
-        // --- Chart Generation ---
         const daysInMonth = now.daysInMonth();
         const dailySales = new Array(daysInMonth).fill(0);
         const chartLabels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
@@ -2347,7 +2349,6 @@
             options: { scales: { y: { beginAtZero: true } } }
         });
 
-        // --- Top Services Analysis ---
         const serviceRevenue = {};
         currentMonthSales.forEach(tx => tx.cart.forEach(item => {
             const label = item.label.split(' (')[0];
@@ -2365,7 +2366,6 @@
                     </div>`;
         }).join('') : `<p class="text-center text-gray-500 p-2">No services sold this month.</p>`;
 
-        // --- Top Customers Analysis ---
         const customerSpending = {};
         currentMonthSales.forEach(tx => {
             if (tx.name) {
@@ -2382,8 +2382,56 @@
             </div>`
         ).join('') : `<p class="text-center text-gray-500 p-2">No customer data for this month.</p>`;
 
+        regenerateDailyBreakdownTable();
+    }
 
-        // --- Daily Breakdown Table ---
+    function filterMonthlyReportTable(searchTerm) {
+        const tableContainer = document.getElementById('daily-breakdown-table');
+        const lowerCaseTerm = searchTerm.toLowerCase().trim();
+
+        if (!lowerCaseTerm) {
+            regenerateDailyBreakdownTable();
+            return;
+        }
+
+        const filteredTransactions = monthlyReportTransactionCache.filter(tx => {
+            const nameMatch = tx.name.toLowerCase().includes(lowerCaseTerm);
+            const phoneMatch = tx.phone && tx.phone.includes(lowerCaseTerm);
+            const orMatch = tx.orNumber.includes(lowerCaseTerm);
+            return nameMatch || phoneMatch || orMatch;
+        });
+
+        if (filteredTransactions.length > 0) {
+            let tableHtml = `<table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th class="px-4 py-2">Date & OR#</th><th class="px-4 py-2">Customer</th><th class="px-4 py-2 text-right">Total</th><th class="px-4 py-2 text-center">Actions</th></tr></thead><tbody>`;
+            filteredTransactions.sort((a,b) => new Date(b.time) - new Date(a.time)).forEach(tx => {
+                 tableHtml += `<tr class="bg-white border-b">
+                            <td class="px-4 py-2 font-medium"><div>${dayjs(tx.time).format('MMM DD')}</div><div class="text-xs text-gray-600">#${tx.orNumber}</div></td>
+                            <td class="px-4 py-2">${tx.name}</td>
+                            <td class="px-4 py-2 text-right font-semibold">₱${tx.total.toFixed(2)}</td>
+                            <td class="px-4 py-2 text-center">
+                                <button onclick="editTransaction('${tx.orNumber}')" class="bg-indigo-500 text-white px-2 py-1 rounded text-xs hover:bg-indigo-600">View/Edit</button>
+                            </td>
+                           </tr>`;
+            });
+            tableHtml += '</tbody></table>';
+            tableContainer.innerHTML = tableHtml;
+        } else {
+            tableContainer.innerHTML = `<p class="text-center text-gray-500 p-6">No transactions found matching "${searchTerm}" in this month.</p>`;
+        }
+    }
+
+    async function regenerateDailyBreakdownTable() {
+        const reportMonthInput = document.getElementById('reportMonth').value;
+        if (!reportMonthInput) return;
+
+        const now = dayjs(reportMonthInput).tz(TIMEZONE);
+        const currentMonthStart = now.startOf('month');
+        const currentMonthEnd = now.endOf('month');
+
+        const currentMonthSales = monthlyReportTransactionCache; 
+        const collectedDataMap = await getCollectedDataForPeriod(currentMonthStart, currentMonthEnd);
+        
+        const daysInMonth = now.daysInMonth();
         const dailyBreakdown = {};
         const tableContainer = document.getElementById('daily-breakdown-table');
         for (let i = 1; i <= daysInMonth; i++) dailyBreakdown[i] = { sales: 0, orders: 0, collected: 0 };
@@ -2424,7 +2472,7 @@
                 transactionsHtml = '<p class="text-center text-gray-500">No transactions for this day.</p>';
             } else {
                 transactionsHtml = dailyTransactions.map(tx => `
-                    <div class="p-3 bg-white border rounded shadow-sm mb-2">
+                    <div class="swal-tx-item p-3 bg-white border rounded shadow-sm mb-2" data-search-content="${tx.orNumber} ${tx.name.toLowerCase()} ${tx.phone || ''}">
                         <div class="flex justify-between items-center">
                             <div>
                                 <p class="font-bold">OR#: ${tx.orNumber}</p>
@@ -2439,7 +2487,11 @@
 
             Swal.fire({
                 title: `Transactions for ${dateString}`,
-                html: `<div class="max-h-96 overflow-y-auto">${transactionsHtml}</div>`,
+                html: `
+                    <input type="text" id="swal-daily-search" oninput="filterSwalList(this.value)" placeholder="Filter by OR#, Name, or Phone..." class="swal2-input mb-4">
+                    <div id="swal-tx-list" class="max-h-80 overflow-y-auto">${transactionsHtml}</div>
+                    <p id="swal-no-results" class="text-center text-gray-500 hidden mt-4">No transactions match your filter.</p>
+                `,
                 width: '600px',
                 showConfirmButton: true,
                 confirmButtonText: 'Done',
@@ -2451,6 +2503,26 @@
             Swal.fire('Error', `Failed to load daily transactions: ${error.message}`, 'error');
             showLoading(false);
         }
+    }
+
+    function filterSwalList(searchTerm) {
+        const lowerCaseTerm = searchTerm.toLowerCase();
+        const listContainer = document.getElementById('swal-tx-list');
+        const items = listContainer.querySelectorAll('.swal-tx-item');
+        const noResultsMsg = document.getElementById('swal-no-results');
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const content = item.dataset.searchContent;
+            if (content.includes(lowerCaseTerm)) {
+                item.style.display = 'block';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        noResultsMsg.style.display = visibleCount === 0 ? 'block' : 'none';
     }
 
 
@@ -2465,14 +2537,11 @@
             }
             let tx = txDoc.data();
 
-            // Ensure new fields exist for old data being edited
             if (tx.balanceDue === undefined) { tx.balanceDue = Math.max(0, tx.total - (tx.amountPaid || 0)); }
             if (tx.smsSent === undefined) tx.smsSent = false;
             if (tx.dashboardFinished === undefined) tx.dashboardFinished = false;
             if (tx.notes === undefined) tx.notes = '';
 
-
-            // Build cart items HTML for editing
             let cartItemsHtml = tx.cart.map((item, index) => `
                 <div class="editable-cart-item">
                     <span class="editable-cart-item-name">${item.label}</span>
@@ -2481,7 +2550,7 @@
                 </div>
             `).join('');
 
-            const result = await Swal.fire({ // Removed destructuring here
+            const result = await Swal.fire({ 
                 title: `Edit Order: OR# ${orNumber}`,
                 html: `
                     <div id="edit-transaction-form" class="text-left space-y-2">
@@ -2539,7 +2608,6 @@
                     const paymentType = document.getElementById('edit-paymentType').value;
                     const amountPaid = parseFloat(document.getElementById('edit-amountPaid').value);
                     
-                    // Recalculate cart from current inputs
                     const updatedCart = [];
                     document.querySelectorAll('#edit-cart-items-container .editable-cart-item').forEach(itemDiv => {
                         const label = itemDiv.querySelector('.editable-cart-item-name').textContent;
@@ -2559,12 +2627,10 @@
                         Swal.showValidationMessage('Amount Paid must be a valid non-negative number.');
                         return false;
                     }
-                    // Specific validation for 'paid' type
                     if (paymentType === 'paid' && amountPaid < newTotal) {
                         Swal.showValidationMessage('For "Fully Paid" orders, Amount Paid cannot be less than Total.');
                         return false;
                     }
-                    // Specific validation for 'down_payment' type
                     if (paymentType === 'down_payment' && amountPaid > newTotal) {
                         Swal.showValidationMessage('For "Down Payment" orders, Amount Paid cannot be more than Total.');
                         return false;
@@ -2574,7 +2640,6 @@
                 },
                 didOpen: () => {
                     showLoading(false);
-                    // Add event listeners for dynamic recalculation
                     const cartItemsContainer = document.getElementById('edit-cart-items-container');
                     cartItemsContainer.addEventListener('input', (e) => {
                         if (e.target.dataset.field === 'price') {
@@ -2583,7 +2648,7 @@
                     });
                     document.getElementById('edit-paymentType').addEventListener('change', recalculateEditTransactionTotals);
                     document.getElementById('edit-amountPaid').addEventListener('input', recalculateEditTransactionTotals);
-                    recalculateEditTransactionTotals(); // Initial calculation
+                    recalculateEditTransactionTotals(); 
                 },
                 showDenyButton: true,
                 denyButtonText: 'Delete Order',
@@ -2591,39 +2656,36 @@
             }).then(async (result) => {
                 if (result.isConfirmed) {
                     showLoading(true, 'Saving changes...');
-                    const updatedData = result.value; // Safely access result.value here
+                    const updatedData = result.value; 
                     let newBalanceDue = 0;
                     let newChange = 0;
-                    let dashboardFinished = tx.dashboardFinished; // Preserve current state
+                    let dashboardFinished = tx.dashboardFinished; 
 
                     if (updatedData.paymentType === 'paid') {
                         newBalanceDue = 0;
                         newChange = updatedData.amountPaid - updatedData.total;
-                        // If becomes fully paid, and SMS is disabled, then finish dashboard entry
                         if (!shopSettings.smsEnabled) {
                              dashboardFinished = true;
                         } else {
-                            // If SMS is enabled, and it just became fully paid, it should show for SMS, so dashboardFinished=false
-                            // unless SMS was already sent, then it remains finished.
-                            if (tx.smsSent) { // Use original tx.smsSent to check if SMS was already sent for this transaction
+                            if (tx.smsSent) { 
                                 dashboardFinished = true;
                             } else {
-                                dashboardFinished = false; // Awaiting SMS
+                                dashboardFinished = false; 
                             }
                         }
                     } else if (updatedData.paymentType === 'down_payment') {
                         newBalanceDue = updatedData.total - updatedData.amountPaid;
-                        newChange = 0; // Change is only applicable if Amount Paid > Total
-                        if (newBalanceDue < 0) { // If amountPaid was more than total for a DP
+                        newChange = 0; 
+                        if (newBalanceDue < 0) { 
                             newChange = Math.abs(newBalanceDue);
                             newBalanceDue = 0;
                         }
-                        dashboardFinished = false; // Always on dashboard if balance due or down payment
+                        dashboardFinished = false; 
                     } else if (updatedData.paymentType === 'collection') {
                         newBalanceDue = updatedData.total;
-                        updatedData.amountPaid = 0; // For collection, amountPaid is 0 initially
+                        updatedData.amountPaid = 0; 
                         newChange = 0;
-                        dashboardFinished = false; // Always on dashboard if for collection
+                        dashboardFinished = false; 
                     }
 
                     const finalUpdate = {
@@ -2637,39 +2699,29 @@
                         balanceDue: newBalanceDue,
                         change: newChange,
                         dashboardFinished: dashboardFinished,
-                        // Preserve original smsSent status if not directly modified
                         smsSent: tx.smsSent,
-                        // Ensure searchable keywords are updated
                         _searchableKeywords: [updatedData.name.toLowerCase(), updatedData.phone, tx.orNumber].filter(Boolean)
                     };
 
-                    // Update customer record if phone changed and is valid
                     if (tx.phone !== updatedData.phone && updatedData.phone) {
                         const oldCustomerRef = db.collection(COLLECTIONS.CUSTOMERS).doc(tx.phone);
                         const newCustomerRef = db.collection(COLLECTIONS.CUSTOMERS).doc(updatedData.phone);
                         await db.runTransaction(async t => {
                             const newCustomerDoc = await t.get(newCustomerRef);
                             if (newCustomerDoc.exists && newCustomerDoc.data().name !== updatedData.name) {
-                                // Conflict: another customer already exists with this phone number and a different name.
-                                // Or perhaps merge existing data? For now, we'll just overwrite.
                                 t.set(newCustomerRef, { name: updatedData.name, phone: updatedData.phone }, { merge: true });
                             } else if (!newCustomerDoc.exists) {
                                 t.set(newCustomerRef, { name: updatedData.name, phone: updatedData.phone });
                             }
-                            // Optionally delete old customer record if no other transactions refer to it (complex)
-                            // For simplicity, we just update/create the new one.
                         });
                     } else if (updatedData.phone) {
-                        // If phone didn't change, but name might have, update existing customer
                         await db.collection(COLLECTIONS.CUSTOMERS).doc(updatedData.phone).set({ name: updatedData.name, phone: updatedData.phone }, { merge: true });
                     }
 
                     await db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).update(finalUpdate);
                     Toast.fire({ icon: 'success', title: `Order ${orNumber} updated successfully!` });
                     showLoading(false);
-                    // Re-render dashboard or reports if needed (listeners should handle this)
                 } else if (result.isDenied) {
-                    // User chose to delete the order
                     const { isConfirmed: deleteConfirmed } = await Swal.fire({
                         title: 'Are you sure?',
                         text: `You are about to permanently delete OR# ${orNumber}. This cannot be undone.`,
@@ -2694,7 +2746,6 @@
         }
     }
 
-    // Helper function for transaction editing popup: recalculates totals
     function recalculateEditTransactionTotals() {
         let currentTotal = 0;
         document.querySelectorAll('#edit-cart-items-container .editable-cart-item input[type="number"]').forEach(input => {
@@ -2710,27 +2761,24 @@
         let amountPaid = parseFloat(amountPaidInputEl.value);
         let newBalanceDue = 0;
 
-        // Manage readOnly state for amountPaid based on paymentType
         if (paymentType === 'collection') {
             newBalanceDue = currentTotal;
-            amountPaidInputEl.value = '0.00'; // For collection, amountPaid is 0 initially
+            amountPaidInputEl.value = '0.00'; 
             amountPaidInputEl.readOnly = true;
         } else if (paymentType === 'down_payment') {
             newBalanceDue = Math.max(0, currentTotal - amountPaid);
             amountPaidInputEl.readOnly = false;
         } else if (paymentType === 'paid') {
             newBalanceDue = 0;
-            // if current amount paid is less than new total, adjust it to new total or keep as is if higher
             if (isNaN(amountPaid) || amountPaid < currentTotal) {
                  amountPaidInputEl.value = currentTotal.toFixed(2);
-                 amountPaid = currentTotal; // Update local variable for calculation
+                 amountPaid = currentTotal;
             }
             amountPaidInputEl.readOnly = false;
         }
         document.getElementById('edit-balanceDue').value = newBalanceDue.toFixed(2);
     }
 
-    // Helper function for transaction editing popup: removes an item
     async function removeEditedCartItem(button, orNumber, index) {
         const { isConfirmed } = await Swal.fire({
             title: 'Remove Item?',
@@ -2746,12 +2794,11 @@
         }
     }
 
-    // Helper function for transaction editing popup: adds a service
     function addEditedCartItem() {
         const select = document.getElementById('edit-add-service-select');
         const selectedOption = select.options[select.selectedIndex];
         const serviceId = selectedOption.value;
-        const serviceLabel = selectedOption.textContent.split(' (₱')[0]; // Extract base label
+        const serviceLabel = selectedOption.textContent.split(' (₱')[0];
         const servicePrice = parseFloat(selectedOption.dataset.price);
         const serviceType = selectedOption.dataset.type;
         const weightInput = document.getElementById('edit-add-service-weight');
@@ -2774,8 +2821,7 @@
         const cartItemsContainer = document.getElementById('edit-cart-items-container');
         const newItemDiv = document.createElement('div');
         newItemDiv.className = 'editable-cart-item';
-        // Use a temporary index or just push, recalculation handles proper indexing for new saved array
-        const tempIndex = cartItemsContainer.children.length; // A temporary index for rendering, not used for actual storage.
+        const tempIndex = cartItemsContainer.children.length; 
         newItemDiv.innerHTML = `
             <span class="editable-cart-item-name">${itemLabel}</span>
             <input type="number" step="0.01" class="border p-1 w-20 text-right" value="${finalPrice.toFixed(2)}" data-index="${tempIndex}" data-field="price">
@@ -2783,8 +2829,8 @@
         `;
         cartItemsContainer.appendChild(newItemDiv);
 
-        select.value = ''; // Reset select
-        weightInput.value = ''; // Reset weight
+        select.value = ''; 
+        weightInput.value = ''; 
         recalculateEditTransactionTotals();
     }
 
@@ -2897,7 +2943,6 @@
         if(r.isConfirmed){ showLoading(true); await Promise.all([ 'transactions', 'customers', 'services', 'config', 'machineStatus' ].map(async coll => { const snap = await db.collection(coll).get(); const batch=db.batch(); snap.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); })); showLoading(false); Swal.fire('Factory Reset Complete','All data erased.','success').then(()=>location.reload()); }
     }
     
-    // ### MODIFIED ### SMS Sending Functions for SMS Gate API
     async function sendTestSms() {
         const username = allElements.settingSmsUsername.value.trim();
         const password = allElements.settingSmsPassword.value.trim();
@@ -3030,7 +3075,6 @@
         }
     }
 
-    // ### NEW / REVISED ### CUSTOMER PROMO SENDER
     async function openCustomerPromoManager() {
         if (!shopSettings.smsEnabled || !shopSettings.smsUsername || !shopSettings.smsPassword) {
             return Swal.fire('SMS Not Configured', 'Please set your API Username and Password in Owner Settings > Shop Config before sending promos.', 'warning');
@@ -3154,7 +3198,7 @@
 
 
     async function getPromoRecipients(filter) {
-        const uniqueCustomers = new Map(); // Using a Map automatically handles duplicate phone numbers
+        const uniqueCustomers = new Map(); 
 
         if (filter === 'all') {
             const snapshot = await db.collection(COLLECTIONS.CUSTOMERS).get();
@@ -3258,9 +3302,9 @@
                     failCount++;
                 }
             } else {
-                failCount++; // Invalid number format
+                failCount++; 
             }
-            await new Promise(resolve => setTimeout(resolve, 500)); // Delay to avoid rate limits
+            await new Promise(resolve => setTimeout(resolve, 500)); 
         }
         
         const finalTitle = cancelPromoSend ? 'Promo Sending Cancelled' : 'Promo Sending Complete!';
@@ -3268,9 +3312,6 @@
         Swal.fire(finalTitle, finalText, 'info');
     }
 
-    // ### END OF CUSTOMER PROMO SENDER ###
-
-    // Helper function to get sales data for a period (used in reports)
     async function getSalesDataForPeriod(startDate, endDate) {
         const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
             .where('time', '>=', startDate.toISOString())
@@ -3279,9 +3320,8 @@
         return snapshot.docs.map(doc => doc.data());
     }
 
-    // Helper function to get collected data for a period (used in reports)
     async function getCollectedDataForPeriod(startDate, endDate) {
-        const collectedDataMap = {}; // Date string -> collected amount for that day
+        const collectedDataMap = {}; 
         const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
             .where('paymentTimestamp', '>=', startDate.toISOString())
             .where('paymentTimestamp', '<=', endDate.toISOString())
@@ -3292,12 +3332,12 @@
             const paymentDay = dayjs(tx.paymentTimestamp).tz(TIMEZONE).format('YYYY-MM-DD');
             let collectedAmount = 0;
 
-            if (tx.balancePaidAmount) { // It was a balance payment
+            if (tx.balancePaidAmount) { 
                  collectedAmount = tx.balancePaidAmount;
-            } else if (tx.paymentType === 'down_payment') { // It was an initial down payment
+            } else if (tx.paymentType === 'down_payment') { 
                  collectedAmount = tx.amountPaid;
-            } else if (tx.paymentType === 'paid' && !tx.balancePaidAmount) { // It was a full payment from the start
-                 collectedAmount = tx.total; // The actual revenue is the total, not amountPaid (which includes change)
+            } else if (tx.paymentType === 'paid' && !tx.balancePaidAmount) { 
+                 collectedAmount = tx.total; 
             }
             collectedDataMap[paymentDay] = (collectedDataMap[paymentDay] || 0) + collectedAmount;
         });
