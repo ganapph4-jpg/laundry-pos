@@ -106,6 +106,28 @@
         border: 1px solid #ccc;
         border-radius: 0.25rem;
     }
+    /* Styles for Promo Manager */
+    #swal-promo-progress-container { display: none; margin-top: 1rem; }
+    #swal-promo-progress-bar { width: 0%; transition: width 0.3s ease; }
+    #swal-promo-status-text { font-size: 0.8rem; text-align: center; margin-top: 0.5rem; }
+    #swal-promo-recipients-box {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        background-color: #f9f9f9;
+    }
+    .promo-recipient-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.25rem 0.5rem;
+        border-bottom: 1px solid #eee;
+    }
+     .promo-recipient-item:last-child {
+        border-bottom: none;
+    }
   </style>
 </head>
 <body class="bg-gray-100 p-4 text-base"> <!-- CHANGED: text-sm to text-base for better readability on tablets -->
@@ -482,6 +504,7 @@
     let customerSearchTimeout; // For debouncing
     let idleTimer; // For auto-lock
     const TIMEZONE = "Asia/Manila";
+    let cancelPromoSend = false; // Flag for promo cancellation
 
     // --- BT --- Bluetooth Global State ---
     let bluetoothDevice = null;
@@ -3007,6 +3030,245 @@
         }
     }
 
+    // ### NEW / REVISED ### CUSTOMER PROMO SENDER
+    async function openCustomerPromoManager() {
+        if (!shopSettings.smsEnabled || !shopSettings.smsUsername || !shopSettings.smsPassword) {
+            return Swal.fire('SMS Not Configured', 'Please set your API Username and Password in Owner Settings > Shop Config before sending promos.', 'warning');
+        }
+
+        const { value: formValues, isConfirmed } = await Swal.fire({
+            title: 'Customer Promo SMS Sender',
+            html: `
+                <div class="text-left space-y-4">
+                    <div>
+                        <label for="swal-promo-message" class="font-semibold">Promotional Message:</label>
+                        <textarea id="swal-promo-message" class="swal2-textarea" placeholder="E.g., Special promo this week! Get 10% off on all services."></textarea>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <div class="flex-grow">
+                            <label for="swal-promo-filter" class="font-semibold">Load Customers:</label>
+                            <select id="swal-promo-filter" class="swal2-select">
+                                <option value="all">All Customers with Phone Number</option>
+                                <option value="active_30">Active (Last 30 Days)</option>
+                                <option value="active_60">Active (Last 60 Days)</option>
+                                <option value="active_90">Active (Last 90 Days)</option>
+                                <option value="inactive_7">Inactive (7+ Days)</option>
+                                <option value="inactive_30">Inactive (30+ Days)</option>
+                                <option value="inactive_60">Inactive (60+ Days)</option>
+                                <option value="inactive_90">Inactive (90+ Days)</option>
+                            </select>
+                        </div>
+                        <button type="button" id="swal-load-customers-btn" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Load</button>
+                    </div>
+                    <div id="swal-promo-controls" class="flex justify-between items-center text-sm mt-2">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="swal-promo-select-all">
+                            <label for="swal-promo-select-all">Select All / Deselect All</label>
+                        </div>
+                        <span id="swal-promo-selected-count" class="font-bold">Selected: 0 customer(s)</span>
+                    </div>
+                    <div id="swal-promo-recipients-box">
+                        <p class="text-center text-gray-500 p-4">Select a filter and click "Load" to see recipients.</p>
+                    </div>
+                </div>
+            `,
+            width: '800px',
+            showCancelButton: true,
+            confirmButtonText: 'Send to Selected',
+            cancelButtonText: 'Close',
+            didOpen: () => {
+                document.getElementById('swal-load-customers-btn').addEventListener('click', handleLoadPromoCustomers);
+                document.getElementById('swal-promo-select-all').addEventListener('change', (e) => {
+                    document.querySelectorAll('.swal-promo-recipient-check').forEach(checkbox => {
+                        checkbox.checked = e.target.checked;
+                    });
+                    updatePromoSelectedCount();
+                });
+                document.getElementById('swal-promo-recipients-box').addEventListener('change', (e) => {
+                    if (e.target.classList.contains('swal-promo-recipient-check')) {
+                        updatePromoSelectedCount();
+                    }
+                });
+            },
+            preConfirm: () => {
+                const message = document.getElementById('swal-promo-message').value;
+                if (!message.trim()) {
+                    Swal.showValidationMessage('Promotional message cannot be empty.');
+                    return false;
+                }
+
+                const selectedRecipients = [];
+                document.querySelectorAll('.swal-promo-recipient-check:checked').forEach(checkbox => {
+                    selectedRecipients.push({
+                        name: checkbox.dataset.name,
+                        phone: checkbox.dataset.phone
+                    });
+                });
+
+                if (selectedRecipients.length === 0) {
+                    Swal.showValidationMessage('You must select at least one customer to send the promo to.');
+                    return false;
+                }
+                return { message, recipients: selectedRecipients };
+            }
+        });
+
+        if (isConfirmed && formValues) {
+            await sendBulkPromo(formValues.message, formValues.recipients);
+        }
+    }
+
+    async function handleLoadPromoCustomers() {
+        const filter = document.getElementById('swal-promo-filter').value;
+        const recipientsBox = document.getElementById('swal-promo-recipients-box');
+        recipientsBox.innerHTML = '<div class="inline-loader"></div>';
+        
+        try {
+            const recipients = await getPromoRecipients(filter);
+            if (recipients.length === 0) {
+                 recipientsBox.innerHTML = '<p class="text-center text-gray-500 p-4">No customers found for this filter.</p>';
+            } else {
+                recipientsBox.innerHTML = recipients.map(cust => `
+                    <div class="promo-recipient-item">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" class="swal-promo-recipient-check" data-phone="${cust.phone}" data-name="${cust.name}">
+                            <div>
+                                <div class="font-semibold">${cust.name}</div>
+                                <div class="text-xs text-gray-600">${cust.phone}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error("Error fetching promo recipients:", error);
+            recipientsBox.innerHTML = '<p class="text-center text-red-500 p-4">Error fetching recipients.</p>';
+        }
+        updatePromoSelectedCount();
+    }
+    
+    function updatePromoSelectedCount() {
+        const count = document.querySelectorAll('.swal-promo-recipient-check:checked').length;
+        document.getElementById('swal-promo-selected-count').textContent = `Selected: ${count} customer(s)`;
+    }
+
+
+    async function getPromoRecipients(filter) {
+        const uniqueCustomers = new Map(); // Using a Map automatically handles duplicate phone numbers
+
+        if (filter === 'all') {
+            const snapshot = await db.collection(COLLECTIONS.CUSTOMERS).get();
+            snapshot.docs.forEach(doc => {
+                const cust = doc.data();
+                if (cust.phone) uniqueCustomers.set(cust.phone, cust);
+            });
+        } else {
+            const [type, daysStr] = filter.split('_');
+            const days = parseInt(daysStr, 10);
+            const cutoffDate = dayjs().subtract(days, 'day').toISOString();
+            
+            if (type === 'active') {
+                const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS).where('time', '>=', cutoffDate).get();
+                snapshot.docs.forEach(doc => {
+                    const tx = doc.data();
+                    if (tx.phone) uniqueCustomers.set(tx.phone, { name: tx.name, phone: tx.phone });
+                });
+            } else if (type === 'inactive') {
+                const allCustomersSnapshot = await db.collection(COLLECTIONS.CUSTOMERS).get();
+                const allCustomersMap = new Map();
+                allCustomersSnapshot.docs.forEach(doc => {
+                    const cust = doc.data();
+                    if (cust.phone) allCustomersMap.set(cust.phone, cust);
+                });
+
+                const activeSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS).where('time', '>=', cutoffDate).get();
+                activeSnapshot.docs.forEach(doc => {
+                    const tx = doc.data();
+                    if (tx.phone && allCustomersMap.has(tx.phone)) {
+                        allCustomersMap.delete(tx.phone);
+                    }
+                });
+                return Array.from(allCustomersMap.values());
+            }
+        }
+        return Array.from(uniqueCustomers.values());
+    }
+
+    async function sendBulkPromo(message, recipients) {
+        cancelPromoSend = false; 
+        const { smsUsername, smsPassword } = shopSettings;
+        const total = recipients.length;
+        let successCount = 0;
+        let failCount = 0;
+        
+        const swalRef = Swal.fire({
+            title: 'Sending Promotional SMS...',
+            html: `
+                <div class="w-full bg-gray-200 rounded-full h-4 mt-4">
+                    <div id="bulk-progress-bar" class="bg-blue-600 h-4 rounded-full text-xs font-medium text-blue-100 text-center p-0.5 leading-none" style="width: 0%">0%</div>
+                </div>
+                <p id="bulk-status-text" class="mt-2 text-sm">Initializing...</p>
+            `,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            showDenyButton: true,
+            denyButtonText: 'Cancel',
+            didOpen: () => {
+                Swal.getDenyButton().addEventListener('click', () => {
+                    cancelPromoSend = true;
+                });
+            }
+        });
+
+        const progressBar = document.getElementById('bulk-progress-bar');
+        const statusText = document.getElementById('bulk-status-text');
+
+        for (let i = 0; i < total; i++) {
+            if (cancelPromoSend) {
+                statusText.textContent = 'Cancelling...';
+                break;
+            }
+            const customer = recipients[i];
+            const progress = Math.round(((i + 1) / total) * 100);
+            statusText.textContent = `Sending to ${customer.name} (${i + 1} of ${total})...`;
+            progressBar.style.width = `${progress}%`;
+            progressBar.textContent = `${progress}%`;
+
+            let formattedPhone = (customer.phone || '').replace(/\D/g, '');
+            if (formattedPhone.startsWith('09') && formattedPhone.length === 11) {
+                formattedPhone = '+63' + formattedPhone.substring(1);
+            } else if (formattedPhone.startsWith('639') && formattedPhone.length === 12) {
+                formattedPhone = '+' + formattedPhone;
+            }
+
+            if (formattedPhone.startsWith('+639')) {
+                try {
+                    const PROXY_URL = 'https://corsproxy.io/?';
+                    const API_URL = PROXY_URL + encodeURIComponent('https://api.sms-gate.app/3rdparty/v1/messages');
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Basic ' + btoa(smsUsername + ':' + smsPassword),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ message: message, phoneNumbers: [formattedPhone] })
+                    });
+                    if (response.ok) { successCount++; } else { failCount++; }
+                } catch (error) {
+                    failCount++;
+                }
+            } else {
+                failCount++; // Invalid number format
+            }
+            await new Promise(resolve => setTimeout(resolve, 500)); // Delay to avoid rate limits
+        }
+        
+        const finalTitle = cancelPromoSend ? 'Promo Sending Cancelled' : 'Promo Sending Complete!';
+        const finalText = `Successfully sent: ${successCount}. Failed: ${failCount}.`;
+        Swal.fire(finalTitle, finalText, 'info');
+    }
+
+    // ### END OF CUSTOMER PROMO SENDER ###
 
     // Helper function to get sales data for a period (used in reports)
     async function getSalesDataForPeriod(startDate, endDate) {
@@ -3046,4 +3308,5 @@
     document.addEventListener('DOMContentLoaded', promptStaffLogin);
   </script>
 </body>
-</html>```
+</html>
+```
