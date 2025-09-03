@@ -575,7 +575,6 @@
         }
     }
 
-    // ### NEW ### Staff Login Logic
     async function promptStaffLogin() {
         const passwordDoc = await db.collection(COLLECTIONS.CONFIG).doc('staffPassword').get();
         const correctPassword = passwordDoc.exists ? passwordDoc.data().value : 'admin';
@@ -606,7 +605,7 @@
                 allowOutsideClick: false,
                 allowEscapeKey: false,
             });
-            promptStaffLogin(); // Prompt again if wrong
+            promptStaffLogin();
         }
     }
 
@@ -628,17 +627,14 @@
         allElements.reviewDateEl.value = dayjs().tz(TIMEZONE).format("YYYY-MM-DD");
         document.getElementById('reportStartDate').value = dayjs().tz(TIMEZONE).startOf('month').format('YYYY-MM-DD');
         document.getElementById('reportEndDate').value = dayjs().tz(TIMEZONE).endOf('month').format('YYYY-MM-DD');
-        document.getElementById('reportMonth').value = dayjs().tz(TIMEZONE).format('YYYY-MM'); // Sets default month for new report
+        document.getElementById('reportMonth').value = dayjs().tz(TIMEZONE).format('YYYY-MM');
 
         showView('pos-view');
 
-        // ### NEW ### One-time migration from localforage to Firestore
         await migrateDataToFirestore();
 
-        // ### NEW ### Set up real-time listeners for all synchronized data
         setupRealtimeListeners();
 
-        // Load non-synced, device-specific data from localforage
         bluetoothSettings = await localforage.getItem('bluetooth_settings') || { autoPrint: false };
         updateBluetoothUI();
 
@@ -647,13 +643,12 @@
     }
 
     function setupRealtimeListeners() {
-        // Listener for Shop Settings
         db.collection(COLLECTIONS.CONFIG).doc('shopSettings').onSnapshot(doc => {
             const defaultSettings = {
                 name: "MAMA'S LOVE LAUNDRY", address: "123 Laundry St, Manila", phone: "0912-345-6789", qrUrl: "",
                 smsEnabled: false,
-                smsUsername: "", // MODIFIED
-                smsPassword: "", // MODIFIED
+                smsUsername: "", 
+                smsPassword: "", 
                 smsPickupMessageTemplate: "Hi [Customer Name], your Mama's Love Laundry order #[OR Number] is now ready for pickup! Thank you from [Shop Name]."
             };
             if (doc.exists) {
@@ -667,7 +662,6 @@
             renderPickupDashboard();
         });
 
-        // Listener for Services
         allElements.serviceLoader.style.display = 'block';
         db.collection(COLLECTIONS.SERVICES).orderBy('label').onSnapshot(snapshot => {
             shopServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -688,12 +682,10 @@
             renderServiceList();
         });
 
-        // Listener for Customers
         db.collection(COLLECTIONS.CUSTOMERS).onSnapshot(snapshot => {
             shopCustomers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         });
 
-        // Listener for Machine Config
         db.collection(COLLECTIONS.CONFIG).doc('machineConfig').onSnapshot(doc => {
             if (doc.exists) {
                 machineConfig = doc.data();
@@ -704,26 +696,23 @@
             renderMachineSettings();
         });
 
-        // Listener for Machine Status
         db.collection(COLLECTIONS.MACHINE_STATUS).orderBy('set').onSnapshot(snapshot => {
             machineStatus = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
              if (machineStatus.length !== (machineConfig.numWashers + machineConfig.numDryers)) {
-                initializeMachineStatus(); // If count mismatch, re-initialize
+                initializeMachineStatus();
             }
             renderOwnerMachineStatus();
         });
 
-        // Listener for dashboard orders (all orders that might appear on the dashboard)
         db.collection(COLLECTIONS.TRANSACTIONS)
           .where('paymentType', 'in', ['collection', 'down_payment', 'paid'])
-          .orderBy('time', 'desc') // Order by time to get recent transactions
-          .limit(50) // Limit to a reasonable number for dashboard display
+          .orderBy('time', 'desc')
+          .limit(50)
           .onSnapshot(snapshot => {
             renderPickupView();
             renderPickupDashboard();
         });
 
-        // Listener for today's transactions to update dashboard totals
         const todayStart = dayjs().tz(TIMEZONE).startOf('day').toISOString();
         const todayEnd = dayjs().tz(TIMEZONE).endOf('day').toISOString();
         db.collection(COLLECTIONS.TRANSACTIONS).where('time', '>=', todayStart).where('time', '<=', todayEnd)
@@ -741,7 +730,6 @@
         }
     }
 
-    // ### NEW ### MIGRATION LOGIC
     async function migrateDataToFirestore() {
         const migrationDone = await localforage.getItem('firestore_migration_v1_done');
         if (migrationDone) {
@@ -755,16 +743,14 @@
         try {
             const batch = db.batch();
 
-            // Migrate Customers
             const localCustomers = await localforage.getItem('shop_customers') || [];
             if (localCustomers.length > 0) {
                 localCustomers.forEach(customer => {
-                    const docRef = db.collection(COLLECTIONS.CUSTOMERS).doc(String(customer.phone || customer.id)); // Use phone as ID for uniqueness
+                    const docRef = db.collection(COLLECTIONS.CUSTOMERS).doc(String(customer.phone || customer.id));
                     batch.set(docRef, customer);
                 });
             }
 
-            // Migrate Machine Config & Status
             const localMachineConfig = await localforage.getItem('machine_config');
             if(localMachineConfig) batch.set(db.collection(COLLECTIONS.CONFIG).doc('machineConfig'), localMachineConfig);
 
@@ -773,27 +759,23 @@
                 localMachineStatus.forEach(m => batch.set(db.collection(COLLECTIONS.MACHINE_STATUS).doc(m.id), m));
             }
 
-            // Migrate Transactions
             const keys = await localforage.keys();
             const dateKeys = keys.filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
             for (const key of dateKeys) {
                 const dailyData = await localforage.getItem(key) || [];
                 dailyData.forEach(tx => {
                     const docRef = db.collection(COLLECTIONS.TRANSACTIONS).doc(tx.orNumber);
-                    // Add new fields with default values for old transactions
                     batch.set(docRef, {
                         ...tx,
                         smsSent: tx.smsSent || false,
-                        dashboardFinished: (tx.paymentType === 'paid' && !shopSettings.smsEnabled) || false // If fully paid and SMS not enabled, finish immediately
+                        dashboardFinished: (tx.paymentType === 'paid' && !shopSettings.smsEnabled) || false
                     }, { merge: true });
                 });
             }
 
-            // Migrate OR Counter
             const localOrCounter = await localforage.getItem('global_or_counter');
             if(localOrCounter) batch.set(db.collection(COLLECTIONS.CONFIG).doc('orCounter'), { value: localOrCounter });
 
-            // Migrate Password
             const localPassword = await localforage.getItem('app_password');
             if(localPassword) batch.set(db.collection(COLLECTIONS.CONFIG).doc('appPassword'), { value: localPassword });
 
@@ -822,15 +804,12 @@
         doStep();
     }
 
-    // --- Dashboard & Settings ---
     async function renderPickupDashboard() {
         document.getElementById('dashboard-date').textContent = dayjs().tz(TIMEZONE).format('dddd, MMMM D, YYYY');
 
-        // Calculate Total Collected Today
         const totalCollectedToday = await getTotalCollectedToday();
         allElements.pickupDashboardSales.textContent = `₱${totalCollectedToday.toFixed(2)}`;
 
-        // Calculate Total Sales Today
         const todayStart = dayjs().tz(TIMEZONE).startOf('day').toDate();
         const todayEnd = dayjs().tz(TIMEZONE).endOf('day').toDate();
         const todaySnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
@@ -840,8 +819,6 @@
         const totalSalesToday = todaySnapshot.docs.reduce((sum, doc) => sum + doc.data().total, 0);
         allElements.pickupDashboardTotalSales.textContent = `₱${totalSalesToday.toFixed(2)}`;
 
-
-        // Calculate "For Collection" stats (ONLY orders with balance due)
         const pendingSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS).where('balanceDue', '>', 0).get();
         const forCollectionCount = pendingSnapshot.size;
         const totalValueForCollection = pendingSnapshot.docs.reduce((sum, doc) => sum + doc.data().balanceDue, 0);
@@ -855,7 +832,6 @@
         const todayStart = dayjs().tz(TIMEZONE).startOf('day').toDate();
         const todayEnd = dayjs().tz(TIMEZONE).endOf('day').toDate();
 
-        // Query for transactions where a payment was made today
         const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
                                .where('paymentTimestamp', '>=', todayStart.toISOString())
                                .where('paymentTimestamp', '<=', todayEnd.toISOString())
@@ -863,14 +839,12 @@
 
         snapshot.docs.forEach(doc => {
             const tx = doc.data();
-            // This logic is simplified because paymentTimestamp is updated for BOTH initial and balance payments.
-            // We just need to check which kind of payment it was.
-            if (tx.balancePaidAmount) { // It was a balance payment
+            if (tx.balancePaidAmount) { 
                  collectedSum += tx.balancePaidAmount;
-            } else if (tx.paymentType === 'down_payment') { // It was an initial down payment
+            } else if (tx.paymentType === 'down_payment') { 
                  collectedSum += tx.amountPaid;
-            } else if (tx.paymentType === 'paid') { // It was a full payment from the start
-                 collectedSum += tx.total; // The actual revenue is the total, not amountPaid (which includes change)
+            } else if (tx.paymentType === 'paid') { 
+                 collectedSum += tx.total; 
             }
         });
 
@@ -885,8 +859,7 @@
         document.querySelectorAll('.settings-tab-button').forEach(el => el.classList.remove('active'));
         document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
         document.getElementById(`tab-button-${tabName}`).classList.add('active');
-        if (tabName === 'reports') {
-        } else if (tabName === 'machines') {
+        if (tabName === 'machines') {
             renderOwnerMachineStatus();
         } else if (tabName === 'config') {
             renderSmsSettings();
@@ -939,7 +912,7 @@
     }
 
     function startIdleTimer() {
-        const idleTimeout = 15 * 60 * 1000; // 15 minutes
+        const idleTimeout = 15 * 60 * 1000;
         const resetTimer = () => {
             clearTimeout(idleTimer);
             if (allElements.settingsPanel.classList.contains('open')) {
@@ -976,7 +949,6 @@
         Toast.fire({ icon: 'success', title: 'Owner password changed successfully!' });
     }
 
-    // ### NEW ### Save Staff Password
     async function saveStaffPassword() {
         const newPassword = document.getElementById('newStaffPassword').value;
         const confirmPassword = document.getElementById('confirmStaffPassword').value;
@@ -1014,13 +986,12 @@
         Toast.fire({ icon: 'success', title: 'Shop info saved!' });
     }
 
-    // ### MODIFIED ### SMS Functions
     function renderSmsSettings() {
         allElements.settingSmsEnabled.checked = shopSettings.smsEnabled;
         allElements.settingSmsUsername.value = shopSettings.smsUsername || '';
         allElements.settingSmsPassword.value = shopSettings.smsPassword || '';
         allElements.settingSmsPickupMessageTemplate.value = shopSettings.smsPickupMessageTemplate || '';
-        toggleSmsSettings(false); // Update UI without saving
+        toggleSmsSettings(false);
     }
 
     async function saveSmsSettings() {
@@ -1042,7 +1013,6 @@
         }
     }
 
-    // --- Service & Machine Management ---
     function renderServiceButtons() {
         const c = allElements.serviceButtonsContainer;
         c.innerHTML = '';
@@ -1146,7 +1116,6 @@
         }
     }
 
-    // --- UPGRADED Machine Set Management Functions ---
     function renderMachineSettings() { document.getElementById('settingNumWashers').value = machineConfig.numWashers; document.getElementById('settingNumDryers').value = machineConfig.numDryers; }
 
     async function initializeMachineStatus() {
@@ -1155,11 +1124,9 @@
         for (let i = 1; i <= machineConfig.numWashers; i++) { newStatus.push({ id: `W${i}`, type: 'Washer', set: i, cycleCount: 0, isActive: true }); }
         for (let i = 1; i <= machineConfig.numDryers; i++) { newStatus.push({ id: `D${i}`, type: 'Dryer', set: i, cycleCount: 0, isActive: true }); }
 
-        // Clear existing machine status
         const currentStatusSnapshot = await db.collection(COLLECTIONS.MACHINE_STATUS).get();
         currentStatusSnapshot.docs.forEach(doc => batch.delete(doc.ref));
 
-        // Add new machine status
         newStatus.forEach(m => {
             const docRef = db.collection(COLLECTIONS.MACHINE_STATUS).doc(m.id);
             batch.set(docRef, m);
@@ -1262,10 +1229,9 @@
         }
     }
 
-    // --- POS & Order Functions ---
     function debouncedSearchCustomers() {
         clearTimeout(customerSearchTimeout);
-        customerSearchTimeout = setTimeout(searchCustomers, 300); // 300ms delay
+        customerSearchTimeout = setTimeout(searchCustomers, 300);
     }
 
     function searchCustomers() {
@@ -1308,7 +1274,7 @@
     function clearForm() {
         allElements.nameEl.value = '';
         allElements.phoneEl.value = '';
-        document.getElementById('orderNotes').value = ''; // Clear notes field
+        document.getElementById('orderNotes').value = '';
         cart = [];
         renderCart();
         allElements.paymentTypeEl.value = 'collection';
@@ -1322,7 +1288,7 @@
 
     async function submitOrder() {
         const name = allElements.nameEl.value.trim();
-        const phone = allElements.phoneEl.value.trim().replace(/\D/g, ''); // Sanitize phone number
+        const phone = allElements.phoneEl.value.trim().replace(/\D/g, '');
         const paymentType = allElements.paymentTypeEl.value;
         const notes = document.getElementById('orderNotes').value.trim();
         const total = cart.reduce((s, i) => s + i.price, 0);
@@ -1346,7 +1312,7 @@
             let amountPaid = 0;
             let balanceDue = total;
             let change = 0;
-            let dashboardFinished = false; // New field
+            let dashboardFinished = false;
 
             if (paymentType === 'paid') {
                 const amountPaidInput = await getAmountReceived(total, total, 'Amount Received');
@@ -1354,7 +1320,6 @@
                 amountPaid = amountPaidInput;
                 balanceDue = 0;
                 change = amountPaidInput - total;
-                // If fully paid at creation AND SMS is disabled, finish immediately
                 if (!shopSettings.smsEnabled) {
                     dashboardFinished = true;
                 }
@@ -1366,13 +1331,11 @@
                 change = Math.max(0, downPaymentAmountInput - total);
             }
 
-            // ### OPTIMIZATION: Optimistic UI ###
             const orderData = { name, phone, cart: [...cart], total, paymentType, amountPaid, change, notes, balanceDue, smsSent: false, dashboardFinished: dashboardFinished };
 
-            clearForm(); // Clear the form immediately for a snappy feel
+            clearForm();
             Toast.fire({icon: 'success', title: 'Order submitted!'});
 
-            // Now, process and save in the background
             processAndSaveOrder(orderData).catch(err => {
                 console.error("Failed to save order:", err);
                 Swal.fire('Save Failed', 'Could not save the order to the database. Please check your internet connection and try again.', 'error');
@@ -1386,7 +1349,6 @@
         const time = dayjs().tz(TIMEZONE).toISOString();
         const orCounterRef = db.collection(COLLECTIONS.CONFIG).doc('orCounter');
 
-        // Get the OR number first using a transaction to prevent race conditions
         const orNumber = await db.runTransaction(async (transaction) => {
             const orCounterDoc = await transaction.get(orCounterRef);
             const newOrValue = (orCounterDoc.exists ? orCounterDoc.data().value : 0) + 1;
@@ -1429,7 +1391,6 @@
         showReceipt(finalTransactionData);
     }
 
-    // --- BT --- START OF BLUETOOTH PRINTING LOGIC ---
     async function saveBluetoothSettings() {
         const isChecked = document.getElementById('swal-auto-print-toggle').checked;
         bluetoothSettings.autoPrint = isChecked;
@@ -1451,14 +1412,14 @@
             qr.addData(data);
             qr.make();
             const moduleCount = qr.getModuleCount();
-            const store = [0x1d, 0x28, 0x6b, 0x00, 0x00, 0x00, 0x00, 0x31, 0x41, 0x32, 0x00]; // pL, pH, cn, fn, n1, n2
+            const store = [0x1d, 0x28, 0x6b, 0x00, 0x00, 0x00, 0x00, 0x31, 0x41, 0x32, 0x00];
             store[3] = (moduleCount + 3) & 0xff;
             store[4] = ((moduleCount + 3) >> 8) & 0xff;
-            this._add([0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, size]); // Model
-            this._add([0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 49]); // Error correction
-            this._add(store); // Store data
+            this._add([0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, size]);
+            this._add([0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 49]);
+            this._add(store);
             this._add(this.encoder.encode(data));
-            this._add([0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 48]); // Print
+            this._add([0x1d, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 48]);
             return this;
         }
         getBuffer() { return new Uint8Array(this._buffer); }
@@ -1587,7 +1548,7 @@
             const timeout = setTimeout(() => {
                 controller.abort();
                 console.warn('Connection attempt timed out.');
-            }, 15000); // 15-second timeout
+            }, 15000);
 
             gattServer = await device.gatt.connect();
             clearTimeout(timeout);
@@ -1726,7 +1687,7 @@
 
             let paymentStatusLine = '';
 
-            if (tx.paymentType === 'paid' && !tx.balancePaidAmount) { // Fully paid original order
+            if (tx.paymentType === 'paid' && !tx.balancePaidAmount) { 
                 paymentStatusLine = '*** FULLY PAID ***';
                 encoder.align('left')
                        .text(`${'CASH'.padEnd(itemWidth)}${`P${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}`).newline()
@@ -1739,19 +1700,19 @@
                 if (tx.change > 0) {
                     encoder.text(`${'CHANGE'.padEnd(itemWidth)}${`P${tx.change.toFixed(2)}`.padStart(priceWidth)}`).newline();
                 }
-            } else if (tx.balancePaidAmount) { // This means it was originally a down payment, and now the balance is paid
+            } else if (tx.balancePaidAmount) { 
                 paymentStatusLine = '*** BALANCE PAID ***';
                 encoder.align('left')
                        .text(`${'BALANCE PAID'.padEnd(itemWidth)}${`P${tx.balancePaidAmount.toFixed(2)}`.padStart(priceWidth)}`).newline();
-                if (tx.balanceDue > 0) { // Should be 0 if fully paid
+                if (tx.balanceDue > 0) {
                     encoder.text(`${'REMAINING'.padEnd(itemWidth)}${`P${tx.balanceDue.toFixed(2)}`.padStart(priceWidth)}`).newline();
                 }
                 if (tx.change > 0) {
                     encoder.text(`${'CHANGE'.padEnd(itemWidth)}${`P${tx.change.toFixed(2)}`.padStart(priceWidth)}`).newline();
                 }
-                encoder.text(`${'TOTAL COLLECTED'.padEnd(itemWidth)}${`P${(tx.amountPaid).toFixed(2)}`.padStart(priceWidth)}`).newline(); // total amount paid for this order (DP + Balance)
+                encoder.text(`${'TOTAL COLLECTED'.padEnd(itemWidth)}${`P${(tx.amountPaid).toFixed(2)}`.padStart(priceWidth)}`).newline();
             }
-             else { // collection
+             else { 
                 paymentStatusLine = '*** FOR COLLECTION ***';
             }
 
@@ -1780,7 +1741,6 @@
             showLoading(false);
         }
     }
-    // --- BT --- END OF BLUETOOTH PRINTING LOGIC ---
     function showReceipt(tx) {
         document.getElementById('receipt-details-compact').innerHTML = `
             OR #: ${tx.orNumber}<br>
@@ -1843,7 +1803,6 @@
             allElements.receiptSection.classList.remove('hidden');
         }
     }
-    // --- Reports and Data Management ---
     async function getAmountReceived(minAmount, maxAmount, inputLabel = 'Amount Received') {
         return new Promise(resolve => {
             Swal.fire({
@@ -1897,24 +1856,59 @@
         });
     }
 
+    // ### NEW: ADVANCED SEARCH FUNCTION ###
     async function searchTransactions() {
-        const term = allElements.searchInputEl.value.toLowerCase().trim();
-        if (!term) { allElements.searchResultsEl.innerHTML = ''; return; }
+        const term = allElements.searchInputEl.value.trim();
+        if (!term) { 
+            allElements.searchResultsEl.innerHTML = ''; 
+            return; 
+        }
 
         showLoading(true, `Searching for "${allElements.searchInputEl.value}"...`);
         allElements.searchResultsEl.innerHTML = '';
 
         try {
-            const query = db.collection(COLLECTIONS.TRANSACTIONS).where('_searchableKeywords', 'array-contains', term).limit(20);
-            const snapshot = await query.get();
-            let matches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-            matches.sort((a, b) => new Date(b.time) - new Date(a.time));
-
-            // ### MODIFIED: Pass `false` to hide the Edit button for staff ###
-            matches.forEach(tx => renderTransaction(tx, allElements.searchResultsEl, false)); 
+            let transactionDocs = [];
+            // Priority 1: Check for a full, 6-digit OR number for a direct lookup.
+            if (/^\d{6}$/.test(term)) {
+                const doc = await db.collection(COLLECTIONS.TRANSACTIONS).doc(term).get();
+                if (doc.exists) {
+                    transactionDocs.push(doc);
+                }
+            } 
             
-            if(matches.length === 0) { allElements.searchResultsEl.innerHTML = '<p class="text-center text-gray-500 p-4">No matching orders found.</p>'; }
+            // Priority 2: If it's not a full OR number, perform a broader search on recent items.
+            if (transactionDocs.length === 0) {
+                const recentSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
+                                             .orderBy('time', 'desc')
+                                             .limit(200) // Broaden the search pool for partial matches
+                                             .get();
+                transactionDocs = recentSnapshot.docs;
+            }
+
+            let allResults = transactionDocs.map(doc => ({ id: doc.id, ...doc.data() }));
+            let matches = [];
+            
+            // If it was a full OR number, the result is the only match.
+            if (/^\d{6}$/.test(term)) {
+                matches = allResults;
+            } else {
+                // Otherwise, filter the broad results for partial matches.
+                const lowerCaseTerm = term.toLowerCase();
+                matches = allResults.filter(tx => {
+                    const nameMatch = tx.name.toLowerCase().includes(lowerCaseTerm);
+                    const phoneMatch = tx.phone && tx.phone.includes(lowerCaseTerm);
+                    const orMatch = tx.orNumber.includes(lowerCaseTerm);
+                    return nameMatch || phoneMatch || orMatch;
+                });
+            }
+
+            if (matches.length > 0) {
+                 matches.sort((a, b) => new Date(b.time) - new Date(a.time));
+                 matches.forEach(tx => renderTransaction(tx, allElements.searchResultsEl, false));
+            } else {
+                 allElements.searchResultsEl.innerHTML = '<p class="text-center text-gray-500 p-4">No matching orders found.</p>';
+            }
 
         } catch (error) {
             console.error("Error during searchTransactions:", error);
@@ -1925,12 +1919,12 @@
         }
     }
 
+
     function clearSearch() {
         allElements.searchInputEl.value = '';
         allElements.searchResultsEl.innerHTML = '';
     }
 
-    // ### MODIFIED: Added `allowEditing` parameter to conditionally show the Edit button ###
     function renderTransaction(tx, container, allowEditing = true) {
         const card = document.createElement('div');
         let statusTag, statusTagColor, payButtonHtml = '', smsButtonHtml = '';
@@ -1956,7 +1950,6 @@
              smsButtonHtml = tx.smsSent ? `<button disabled class="bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs ml-2">SMS Sent</button>` : `<button onclick="sendPickupReadySms('${tx.orNumber}', '${tx.phone}', '${tx.name}')" class="bg-purple-500 text-white px-3 py-1 rounded text-xs hover:bg-purple-600 ml-2">Send SMS</button>`;
         }
 
-        // Conditionally create the edit button HTML
         const editButtonHtml = allowEditing ? `<button onclick='editTransaction("${tx.orNumber}")' class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">Edit</button>` : '';
 
         card.className = 'p-3 bg-white border rounded shadow-sm mb-2';
@@ -1998,7 +1991,7 @@
             const currentTransaction = currentDoc.data();
 
             let updatedData = {};
-            if (newPaymentType === 'paid') { // Order becoming fully paid (from collection or DP)
+            if (newPaymentType === 'paid') {
                 updatedData = {
                     paymentType: 'paid', amountPaid: (currentTransaction.amountPaid || 0) + amountPaidInput, change: change,
                     paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0
@@ -2009,7 +2002,7 @@
                     updatedData.dashboardFinished = false;
                 }
 
-            } else if (newPaymentType === 'balance_paid') { // Paying a balance on a down_payment order
+            } else if (newPaymentType === 'balance_paid') {
                 updatedData = {
                     paymentType: 'paid', amountPaid: (currentTransaction.amountPaid || 0) + amountPaidInput,
                     balancePaidAmount: amountPaidInput, change: change,
@@ -2132,7 +2125,7 @@
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     </button>`;
         }
-        else { // 'collection'
+        else { 
             bgColor = 'bg-yellow-50 border-yellow-200'; statusTag = 'For Collection'; statusTagColor = 'bg-yellow-200 text-yellow-800';
             totalDisplay = `₱${tx.balanceDue.toFixed(2)}`;
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.total}, 'paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Mark as Paid</button>`;
@@ -2215,7 +2208,6 @@
         }
         const total = dailyData.reduce((sum, tx) => sum + tx.total, 0);
         container.innerHTML = `<p class="font-bold text-lg p-2 bg-gray-100 rounded">Total for ${dateKey}: ₱${total.toFixed(2)}</p>`;
-        // Owner can edit from here, so we use the default `allowEditing = true`
         dailyData.forEach(tx => renderTransaction(tx, container));
         showLoading(false);
     }
@@ -2923,7 +2915,7 @@
                 phone: cleanPhone,
                 balanceDue: calculatedBalanceDue,
                 smsSent: tx.smsSent || false,
-                dashboardFinished: (tx.paymentType === 'paid' && !shopSettings.smsEnabled) || false, // Default for old fully paid orders
+                dashboardFinished: (tx.paymentType === 'paid' && !shopSettings.smsEnabled) || false,
                 notes: tx.notes || "",
                 _searchableKeywords: [(tx.name || "").toLowerCase(), cleanPhone, tx.orNumber || ""].filter(Boolean)
             };
@@ -3320,7 +3312,7 @@
         return snapshot.docs.map(doc => doc.data());
     }
 
-    async function getCollectedDataForPeriod(startDate, endDate) {
+       async function getCollectedDataForPeriod(startDate, endDate) {
         const collectedDataMap = {}; 
         const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
             .where('paymentTimestamp', '>=', startDate.toISOString())
@@ -3332,13 +3324,16 @@
             const paymentDay = dayjs(tx.paymentTimestamp).tz(TIMEZONE).format('YYYY-MM-DD');
             let collectedAmount = 0;
 
-            if (tx.balancePaidAmount) { 
+            // This logic correctly identifies the amount collected AT THE TIME of the paymentTimestamp.
+            if (tx.balancePaidAmount) { // It was a balance payment.
                  collectedAmount = tx.balancePaidAmount;
-            } else if (tx.paymentType === 'down_payment') { 
+            } else if (tx.paymentType === 'down_payment') { // It was an initial down payment.
                  collectedAmount = tx.amountPaid;
-            } else if (tx.paymentType === 'paid' && !tx.balancePaidAmount) { 
-                 collectedAmount = tx.total; 
+            } else if (tx.paymentType === 'paid') { // It was a full payment from the start.
+                 collectedAmount = tx.total; // The actual revenue is the total, not amountPaid (which may include customer change).
             }
+
+            // Add the collected amount to the map for the correct day.
             collectedDataMap[paymentDay] = (collectedDataMap[paymentDay] || 0) + collectedAmount;
         });
         return collectedDataMap;
@@ -3349,4 +3344,3 @@
   </script>
 </body>
 </html>
-```
