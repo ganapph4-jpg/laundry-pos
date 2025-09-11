@@ -705,9 +705,7 @@
         });
 
         db.collection(COLLECTIONS.TRANSACTIONS)
-          .where('paymentType', 'in', ['collection', 'down_payment', 'paid'])
-          .orderBy('time', 'desc')
-          .limit(50)
+          .where('balanceDue', '>', 0)
           .onSnapshot(snapshot => {
             renderPickupView();
             renderPickupDashboard();
@@ -2035,25 +2033,20 @@
         allElements.findOrderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    // #################################################################
+    // ### FUNCTION UPDATED AS PER YOUR REQUEST ###
+    // #################################################################
     async function renderPickupView() {
         const container = allElements.pendingListContainer;
         container.innerHTML = '<div class="inline-loader"></div>';
         const searchTerm = allElements.pickupSearchInput.value.toLowerCase();
 
+        // UPDATED LOGIC: We now ONLY fetch orders that have a balance due.
+        // Orders that are fully paid will no longer be queried for this view.
         const pendingOrdersSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
                                               .where('balanceDue', '>', 0)
                                               .get();
-        let ordersWithBalanceDue = pendingOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-
-        const paidAwaitingSmsSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
-                                               .where('paymentType', '==', 'paid')
-                                               .where('smsSent', '==', false)
-                                               .where('dashboardFinished', '==', false)
-                                               .get();
-        let paidAwaitingSmsOrders = paidAwaitingSmsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-
-
-        let allDashboardOrders = [...ordersWithBalanceDue, ...paidAwaitingSmsOrders];
+        let allDashboardOrders = pendingOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
         if (searchTerm) {
             allDashboardOrders = allDashboardOrders.filter(tx =>
@@ -2077,7 +2070,7 @@
                     </div>
                 `;
             } else {
-                messageHtml = `<p class="text-center text-gray-500 p-4">No orders waiting for customer action.</p>`;
+                messageHtml = `<p class="text-center text-gray-500 p-4">No orders waiting for payment.</p>`;
             }
             container.innerHTML = messageHtml;
             return;
@@ -2085,6 +2078,9 @@
 
         allDashboardOrders.sort((a, b) => new Date(a.time) - new Date(b.time)).forEach(tx => renderPickupCard(tx, container));
     }
+    // #################################################################
+    // ### END OF UPDATED FUNCTION ###
+    // #################################################################
 
     function getColorForText(str) {
         if (!str) return 'text-gray-700';
@@ -2095,6 +2091,7 @@
     }
 
     function renderPickupCard(tx, container) {
+        // This condition is now redundant due to the new query, but is safe to keep.
         if (tx.dashboardFinished) {
             return;
         }
@@ -2106,33 +2103,23 @@
         else { displayTime = timeObj.format('MMM DD, YYYY'); timeSuffix = ''; }
 
         let bgColor, statusTag, statusTagColor, totalDisplay, payButtonHtml = '', smsButtonHtml = '';
-        let viewReceiptButtonHtml = ''; 
         const customerNameColor = getColorForText(tx.name);
 
         if (tx.balanceDue === undefined) tx.balanceDue = Math.max(0, tx.total - (tx.amountPaid || 0));
-        if (tx.smsSent === undefined) tx.smsSent = false;
-        if (tx.dashboardFinished === undefined) tx.dashboardFinished = false;
 
         if (tx.paymentType === 'down_payment') {
             bgColor = 'bg-blue-50 border-blue-200'; statusTag = 'Down Payment'; statusTagColor = 'bg-blue-200 text-blue-800';
             totalDisplay = `₱${tx.amountPaid.toFixed(2)} (Bal: ₱${tx.balanceDue.toFixed(2)})`;
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.balanceDue}, 'balance_paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Pay Balance</button>`;
-        } else if (tx.paymentType === 'paid') {
-            bgColor = 'bg-green-50 border-green-200'; statusTag = 'Fully Paid'; statusTagColor = 'bg-green-200 text-green-800';
-            totalDisplay = `₱${tx.total.toFixed(2)}`;
-            payButtonHtml = ''; 
-            viewReceiptButtonHtml = `<button onclick='showReceipt(${JSON.stringify(tx)})' class="bg-gray-200 p-2 rounded hover:bg-gray-300" title="View Receipt">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                    </button>`;
-        }
-        else { 
+        } else if (tx.paymentType === 'collection') { 
             bgColor = 'bg-yellow-50 border-yellow-200'; statusTag = 'For Collection'; statusTagColor = 'bg-yellow-200 text-yellow-800';
             totalDisplay = `₱${tx.balanceDue.toFixed(2)}`;
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.total}, 'paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Mark as Paid</button>`;
         }
+        // NOTE: The 'paid' condition is removed as it will no longer appear on this dashboard.
 
         if (shopSettings.smsEnabled && tx.phone) {
-            smsButtonHtml = tx.smsSent ? `<button disabled class="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm ml-2">SMS Sent</button>` : `<button onclick="sendPickupReadySms('${tx.orNumber}', '${tx.phone}', '${tx.name}')" class="bg-purple-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-purple-600 ml-2">Send SMS</button>`;
+             smsButtonHtml = `<button onclick="sendPickupReadySms('${tx.orNumber}', '${tx.phone}', '${tx.name}')" class="bg-purple-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-purple-600 ml-2">Send SMS</button>`;
         }
 
         card.className = `p-4 border rounded-lg shadow-sm ${bgColor}`;
@@ -2150,7 +2137,7 @@
                 <div class="flex flex-col items-start md:items-end">
                     <p class="font-bold text-2xl mb-2">${totalDisplay}</p>
                     <div class="flex items-center gap-2 flex-wrap justify-end">
-                        ${payButtonHtml} ${smsButtonHtml} ${viewReceiptButtonHtml}
+                        ${payButtonHtml} ${smsButtonHtml}
                     </div>
                 </div>
             </div>`;
@@ -3344,3 +3331,4 @@
   </script>
 </body>
 </html>
+```
