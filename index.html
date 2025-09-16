@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -245,6 +246,9 @@
                 </div>
             </div>
         </div>
+        
+        <!-- ### NEW: Overdue Order Alerts Container ### -->
+        <div id="overdue-alerts-container" class="my-4 space-y-3"></div>
 
         <!-- PENDING ORDERS CONTENT -->
         <div id="pending-orders-content" class="space-y-4">
@@ -2048,6 +2052,9 @@
                                               .get();
         let allDashboardOrders = pendingOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
+        // ### MODIFIED: Call the new alert function here ###
+        checkAndDisplayOverdueOrders(allDashboardOrders);
+
         if (searchTerm) {
             allDashboardOrders = allDashboardOrders.filter(tx =>
                 tx.name.toLowerCase().includes(searchTerm) ||
@@ -2142,6 +2149,61 @@
                 </div>
             </div>`;
         container.appendChild(card);
+    }
+    
+    // ### NEW FUNCTION: To check for and display alerts for overdue orders ###
+    function checkAndDisplayOverdueOrders(pendingOrders) {
+        const container = document.getElementById('overdue-alerts-container');
+        if (!container) return; // Safety check
+
+        container.innerHTML = ''; // Clear previous alerts
+
+        const now = dayjs().tz(TIMEZONE);
+        const alerts15Days = [];
+        const alerts30Days = [];
+
+        pendingOrders.forEach(tx => {
+            const orderDate = dayjs(tx.time).tz(TIMEZONE);
+            const daysPending = now.diff(orderDate, 'day');
+
+            if (daysPending >= 30) {
+                alerts30Days.push(tx);
+            } else if (daysPending >= 15) {
+                alerts15Days.push(tx);
+            }
+        });
+
+        let alertHtml = '';
+
+        if (alerts30Days.length > 0) {
+            alertHtml += `
+                <div class="p-4 border-l-4 border-red-500 bg-red-100 rounded-r-lg shadow-md">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-red-700 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <h3 class="text-lg font-bold text-red-800">CRITICAL: ${alerts30Days.length} Order(s) Unclaimed for 30+ Days</h3>
+                    </div>
+                    <ul class="mt-2 ml-4 list-disc text-sm text-red-700 space-y-1">
+                        ${alerts30Days.map(tx => `<li><strong>OR# ${tx.orNumber}</strong> (${tx.name}) - ${now.diff(dayjs(tx.time), 'day')} days pending.</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        if (alerts15Days.length > 0) {
+            alertHtml += `
+                <div class="p-4 border-l-4 border-yellow-500 bg-yellow-100 rounded-r-lg shadow-md">
+                    <div class="flex items-center">
+                        <svg class="w-6 h-6 text-yellow-700 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <h3 class="text-lg font-bold text-yellow-800">WARNING: ${alerts15Days.length} Order(s) Unclaimed for 15+ Days</h3>
+                    </div>
+                    <ul class="mt-2 ml-4 list-disc text-sm text-yellow-700 space-y-1">
+                        ${alerts15Days.map(tx => `<li><strong>OR# ${tx.orNumber}</strong> (${tx.name}) - ${now.diff(dayjs(tx.time), 'day')} days pending.</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        container.innerHTML = alertHtml;
     }
 
     async function generateEndOfDayReport() {
