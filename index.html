@@ -226,6 +226,11 @@
                     <button onclick="openMachineStatusManager()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 font-bold shadow-sm">
                         Manage Active Machines
                     </button>
+                    <!-- ### NEW ### Unclaimed Orders Button -->
+                    <button onclick="openUnclaimedOrdersPopup()" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 font-bold shadow-sm flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Unclaimed Orders
+                    </button>
                     <button onclick="generateEndOfDayReport()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold shadow-sm">
                         Generate End of Day Report
                     </button>
@@ -247,8 +252,8 @@
             </div>
         </div>
         
-        <!-- ### NEW: Overdue Order Alerts Container ### -->
-        <div id="overdue-alerts-container" class="my-4 space-y-3"></div>
+        <!-- ### REMOVED: Overdue Order Alerts Container ### -->
+        <!-- <div id="overdue-alerts-container" class="my-4 space-y-3"></div> -->
 
         <!-- PENDING ORDERS CONTENT -->
         <div id="pending-orders-content" class="space-y-4">
@@ -2052,9 +2057,6 @@
                                               .get();
         let allDashboardOrders = pendingOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
-        // ### MODIFIED: Call the new alert function here ###
-        checkAndDisplayOverdueOrders(allDashboardOrders);
-
         if (searchTerm) {
             allDashboardOrders = allDashboardOrders.filter(tx =>
                 tx.name.toLowerCase().includes(searchTerm) ||
@@ -2151,12 +2153,13 @@
         container.appendChild(card);
     }
     
-    // ### NEW FUNCTION: To check for and display alerts for overdue orders ###
-    function checkAndDisplayOverdueOrders(pendingOrders) {
-        const container = document.getElementById('overdue-alerts-container');
-        if (!container) return; // Safety check
-
-        container.innerHTML = ''; // Clear previous alerts
+    // ### NEW FUNCTION: To open a popup with details of unclaimed orders ###
+    async function openUnclaimedOrdersPopup() {
+        showLoading(true, 'Analyzing unclaimed orders...');
+        const pendingOrdersSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
+                                              .where('balanceDue', '>', 0)
+                                              .get();
+        const pendingOrders = pendingOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
 
         const now = dayjs().tz(TIMEZONE);
         const alerts15Days = [];
@@ -2173,37 +2176,43 @@
             }
         });
 
-        let alertHtml = '';
-
-        if (alerts30Days.length > 0) {
-            alertHtml += `
-                <div class="p-4 border-l-4 border-red-500 bg-red-100 rounded-r-lg shadow-md">
-                    <div class="flex items-center">
-                        <svg class="w-6 h-6 text-red-700 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                        <h3 class="text-lg font-bold text-red-800">CRITICAL: ${alerts30Days.length} Order(s) Unclaimed for 30+ Days</h3>
-                    </div>
-                    <ul class="mt-2 ml-4 list-disc text-sm text-red-700 space-y-1">
-                        ${alerts30Days.map(tx => `<li><strong>OR# ${tx.orNumber}</strong> (${tx.name}) - ${now.diff(dayjs(tx.time), 'day')} days pending.</li>`).join('')}
+        const createListHtml = (orders, title, bgColor, textColor) => {
+            if (orders.length === 0) {
+                return `<div class="p-4 rounded-lg ${bgColor}"><h3 class="font-bold ${textColor}">${title} (0)</h3><p class="text-sm text-center text-gray-600 mt-2">No orders in this category.</p></div>`;
+            }
+            return `
+                <div class="p-4 rounded-lg ${bgColor}">
+                    <h3 class="font-bold ${textColor}">${title} (${orders.length})</h3>
+                    <ul class="mt-2 space-y-2 text-sm">
+                        ${orders.sort((a,b) => new Date(b.time) - new Date(a.time)).map(tx => `
+                            <li class="p-2 bg-white rounded shadow-sm border">
+                                <div class="flex justify-between">
+                                    <span><strong>OR# ${tx.orNumber}</strong> - ${tx.name}</span>
+                                    <span class="font-semibold">${now.diff(dayjs(tx.time), 'day')} days</span>
+                                </div>
+                            </li>
+                        `).join('')}
                     </ul>
                 </div>
             `;
-        }
+        };
+        
+        const criticalHtml = createListHtml(alerts30Days, 'Critical: 30+ Days Unclaimed', 'bg-red-100', 'text-red-800');
+        const warningHtml = createListHtml(alerts15Days, 'Warning: 15-29 Days Unclaimed', 'bg-yellow-100', 'text-yellow-800');
+        
+        showLoading(false);
 
-        if (alerts15Days.length > 0) {
-            alertHtml += `
-                <div class="p-4 border-l-4 border-yellow-500 bg-yellow-100 rounded-r-lg shadow-md">
-                    <div class="flex items-center">
-                        <svg class="w-6 h-6 text-yellow-700 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <h3 class="text-lg font-bold text-yellow-800">WARNING: ${alerts15Days.length} Order(s) Unclaimed for 15+ Days</h3>
-                    </div>
-                    <ul class="mt-2 ml-4 list-disc text-sm text-yellow-700 space-y-1">
-                        ${alerts15Days.map(tx => `<li><strong>OR# ${tx.orNumber}</strong> (${tx.name}) - ${now.diff(dayjs(tx.time), 'day')} days pending.</li>`).join('')}
-                    </ul>
+        await Swal.fire({
+            title: 'Unclaimed Order Report',
+            html: `
+                <div class="space-y-4 text-left max-h-96 overflow-y-auto p-2">
+                    ${criticalHtml}
+                    ${warningHtml}
                 </div>
-            `;
-        }
-
-        container.innerHTML = alertHtml;
+            `,
+            width: '600px',
+            confirmButtonText: 'Done',
+        });
     }
 
     async function generateEndOfDayReport() {
@@ -3393,4 +3402,4 @@
   </script>
 </body>
 </html>
-```
+``
