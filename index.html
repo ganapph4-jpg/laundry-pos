@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -212,7 +212,7 @@
                 <div class="flex gap-2 flex-wrap items-center">
                     <!-- BT Button Added -->
                     <button id="pickup-connect-printer-btn" onclick="openPrinterManagerPopup()" class="bg-white border-2 border-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-100 font-bold shadow-sm flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                         <span id="pickup-printer-status-text">Connect Printer</span>
                     </button>
                     <!-- ### UPDATED ### -->
@@ -1272,6 +1272,7 @@
             alerts.forEach(alert => {
                 htmlMessage += `<p>${alert}</p>`;
             });
+            htmlMessage += `<p class="mt-4 text-sm font-semibold text-blue-700">Please go to Owner Settings > Machines to update the cleaning date for each washer.</p>`; // New instruction
             htmlMessage += '</div>';
 
             await Swal.fire({
@@ -1279,6 +1280,7 @@
                 html: htmlMessage,
                 icon: 'warning',
                 confirmButtonText: 'Understood',
+                // Removed showCancelButton and cancelButtonText as per new workflow
                 showClass: {
                     popup: 'swal2-noanimation', // Disable enter animation
                     backdrop: 'swal2-noanimation' // Disable backdrop animation
@@ -2786,7 +2788,7 @@
         const dailyBreakdown = {};
         const tableContainer = document.getElementById('daily-breakdown-table');
         for (let i = 1; i <= daysInMonth; i++) dailyBreakdown[i] = { sales: 0, orders: 0, collected: 0 };
-        currentMonthSales.forEach(tx => { const d = dayjs(tx.time).tz(TIMEZONE).date(); dailyBreakdown[d].sales += tx.total; dailyBreakdown[d].orders++; });
+        currentMonthSales.forEach(tx => { const d = dayjs(tx.time).tz(TIMEZONE).date(); dailyBreakdown[d].sales += tx.total; dailyDailyBreakdown[d].orders++; });
         for (const [dateKey, amount] of Object.entries(collectedDataMap)) { const d = dayjs(dateKey).date(); if (dailyBreakdown[d]) dailyBreakdown[d].collected = amount; }
         
         let tableHtml = `<table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th class="px-4 py-2">Date</th><th class="px-4 py-2 text-right">Orders</th><th class="px-4 py-2 text-right">Total Sales</th><th class="px-4 py-2 text-right">Collected (Cash)</th><th class="px-4 py-2 text-center">Actions</th></tr></thead><tbody>`;
