@@ -1,5 +1,4 @@
-
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -144,7 +143,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H7a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
             </button>
             <button onclick="showView('pickup-view')" id="to-pickup-btn" title="Manage Pickups" class="text-gray-600 hover:text-blue-600 p-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 3 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
             </button>
             <button onclick="openSettingsWithPassword()" title="Owner Settings" class="text-gray-600 hover:text-blue-600 p-2 ml-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -250,6 +249,8 @@
                     <p id="pickup-dashboard-pending-value" class="text-2xl font-bold text-red-900 mt-1">₱0.00</p>
                 </div>
             </div>
+            <!-- ### UPDATED ### Tub Cleaning Dashboard Alert -->
+            <div id="tub-cleaning-dashboard-alert" class="mt-4 p-3 rounded-lg text-center font-semibold border hidden"></div>
         </div>
         
         <!-- ### REMOVED: Overdue Order Alerts Container ### -->
@@ -363,7 +364,21 @@
                     </div>
                 </div>
             </div></div>
-            <div id="tab-content-machines" class="settings-tab-content hidden"><div class="p-4 border rounded border-green-300 bg-green-50"><h3 class="text-lg font-semibold mb-3 text-green-800">Machine Configuration</h3><div class="space-y-3"><div><label for="settingNumWashers" class="block font-medium">Number of Washers</label><input id="settingNumWashers" type="number" class="border p-2 w-full mt-1" placeholder="e.g., 2"></div><div><label for="settingNumDryers" class="block font-medium">Number of Dryers</label><input id="settingNumDryers" type="number" class="border p-2 w-full mt-1" placeholder="e.g., 2"></div></div><button onclick="saveMachineSettings()" class="bg-green-600 text-white px-4 py-2 rounded mt-4 w-full hover:bg-green-700">Save Machine Config</button><hr class="my-6 border-green-200"><div id="machine-cycle-display"><h4 class="text-md font-bold mb-2 text-green-700">Live Cycle Counts & Status</h4><div id="owner-machine-status-container"></div></div><hr class="my-6 border-green-200"><div id="machine-usage-report"><h4 class="text-md font-bold mb-2 text-green-700">Machine Usage Report</h4><button onclick="toggleMachineReport()" id="machine-report-btn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full">Show Report</button><div id="machine-usage-report-container" class="mt-4 space-y-3 hidden"><div id="machine-usage-list" class="space-y-2"></div><div class="pt-4 border-t border-green-200"><button onclick="confirmResetAllCycleCounts()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full">Reset All Cycle Counts</button><p class="text-xs text-gray-600 mt-1">Warning: This is permanent. Use this to start a new tracking period.</p></div></div></div></div></div>
+            <div id="tab-content-machines" class="settings-tab-content hidden"><div class="p-4 border rounded border-green-300 bg-green-50"><h3 class="text-lg font-semibold mb-3 text-green-800">Machine Configuration</h3><div class="space-y-3"><div><label for="settingNumWashers" class="block font-medium">Number of Washers</label><input id="settingNumWashers" type="number" class="border p-2 w-full mt-1" placeholder="e.g., 2"></div><div><label for="settingNumDryers" class="block font-medium">Number of Dryers</label><input id="settingNumDryers" type="number" class="border p-2 w-full mt-1" placeholder="e.g., 2"></div></div><button onclick="saveMachineSettings()" class="bg-green-600 text-white px-4 py-2 rounded mt-4 w-full hover:bg-green-700">Save Machine Config</button><hr class="my-6 border-green-200"><div id="machine-cycle-display"><h4 class="text-md font-bold mb-2 text-green-700">Live Cycle Counts & Status</h4><div id="owner-machine-status-container"></div></div><hr class="my-6 border-green-200"><div id="machine-usage-report"><h4 class="text-md font-bold mb-2 text-green-700">Machine Usage Report</h4><button onclick="toggleMachineReport()" id="machine-report-btn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full">Show Report</button><div id="machine-usage-report-container" class="mt-4 space-y-3 hidden"><div id="machine-usage-list" class="space-y-2"></div><div class="pt-4 border-t border-green-200"><button onclick="confirmResetAllCycleCounts()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 w-full">Reset All Cycle Counts</button><p class="text-xs text-gray-600 mt-1">Warning: This is permanent. Use this to start a new tracking period.</p></div></div></div>
+                <!-- ### UPDATED ### Tub Cleaning Reminder Section -->
+                <hr class="my-6 border-green-200">
+                <div class="p-4 border rounded border-blue-300 bg-blue-50">
+                    <h3 class="text-lg font-semibold mb-3 text-blue-800">Tub Cleaning Reminders</h3>
+                    <p class="text-sm text-gray-600 mb-3">Configure the general interval for tub cleaning. Individual washer cleaning dates are managed above in the "Live Cycle Counts & Status" section.</p>
+                    <div class="space-y-3">
+                        <div>
+                            <label for="tubCleaningIntervalDays" class="block font-medium">Cleaning Interval (Days):</label>
+                            <input id="tubCleaningIntervalDays" type="number" class="border p-2 w-full mt-1" placeholder="e.g., 7" value="7">
+                        </div>
+                    </div>
+                    <button onclick="saveTubCleaningSettings()" class="bg-blue-600 text-white px-4 py-2 rounded mt-4 w-full hover:bg-blue-700">Save Global Tub Cleaning Interval</button>
+                </div>
+                </div></div>
             <div id="tab-content-config" class="settings-tab-content hidden space-y-6">
                 <div class="p-4 border rounded">
                     <h3 class="text-lg font-semibold mb-3">Shop Information</h3>
@@ -514,9 +529,11 @@
 
 
     // --- Global State ---
-    let cart = [], shopSettings = {}, shopServices = [], shopCustomers = [];
-    let machineConfig = { numWashers: 2, numDryers: 2 };
-    let machineStatus = [];
+    let cart = [], shopSettings = [], shopServices = [], shopCustomers = [];
+    // machineConfig now stores global machine counts and the default tub cleaning interval.
+    // Individual washer cleaning dates will be part of their respective machineStatus objects.
+    let machineConfig = { numWashers: 2, numDryers: 2, tubCleaning: { intervalDays: 7 } }; 
+    let machineStatus = []; // This array will hold objects like { id: 'W1', ..., lastTubCleaned: 'ISOString' }
     let monthlyChartInstance = null;
     let customerSearchTimeout; // For debouncing
     let idleTimer; // For auto-lock
@@ -554,11 +571,14 @@
         // SMS elements
         settingSmsEnabled: document.getElementById('settingSmsEnabled'),
         smsConfigDetails: document.getElementById('sms-config-details'),
-        settingSmsUsername: document.getElementById('settingSmsUsername'), // MODIFIED
-        settingSmsPassword: document.getElementById('settingSmsPassword'), // MODIFIED
+        settingSmsUsername: document.getElementById('settingSmsUsername'),
+        settingSmsPassword: document.getElementById('settingSmsPassword'),
         smsTestPhoneNumber: document.getElementById('smsTestPhoneNumber'),
         settingSmsPickupMessageTemplate: document.getElementById('settingSmsPickupMessageTemplate'),
         customerPromoBtn: document.getElementById('customer-promo-btn'),
+        // UPDATED Tub Cleaning Elements (only interval remains global in UI)
+        tubCleaningIntervalDays: document.getElementById('tubCleaningIntervalDays'),
+        tubCleaningDashboardAlert: document.getElementById('tub-cleaning-dashboard-alert'),
     };
 
     // --- Core App & UI Functions ---
@@ -581,6 +601,7 @@
         } else if (viewId === 'pickup-view') {
             allElements.toPosBtn.classList.remove('hidden');
             allElements.toPickupBtn.classList.add('hidden');
+            updateDashboardTubCleaningAlert();
         }
     }
 
@@ -646,6 +667,8 @@
 
         bluetoothSettings = await localforage.getItem('bluetooth_settings') || { autoPrint: false };
         updateBluetoothUI();
+        
+        await checkTubCleaningReminder(); 
 
         showLoading(false);
         startIdleTimer();
@@ -696,21 +719,44 @@
         });
 
         db.collection(COLLECTIONS.CONFIG).doc('machineConfig').onSnapshot(doc => {
+            // Default `tubCleaning.intervalDays` if not present
+            const defaultIntervalDays = 7;
+            let currentIntervalDays = defaultIntervalDays;
+
             if (doc.exists) {
-                machineConfig = doc.data();
+                const data = doc.data();
+                machineConfig.numWashers = data.numWashers || 2;
+                machineConfig.numDryers = data.numDryers || 2;
+                if (data.tubCleaning && typeof data.tubCleaning.intervalDays === 'number') {
+                    currentIntervalDays = data.tubCleaning.intervalDays;
+                }
             } else {
-                machineConfig = { numWashers: 2, numDryers: 2 };
+                // If doc doesn't exist, set defaults and create it
                 db.collection(COLLECTIONS.CONFIG).doc('machineConfig').set(machineConfig);
             }
+            machineConfig.tubCleaning.intervalDays = currentIntervalDays;
+
             renderMachineSettings();
+            renderTubCleaningSettings(); // Update settings UI for global interval
+            updateDashboardTubCleaningAlert(); // Update dashboard alert
         });
 
         db.collection(COLLECTIONS.MACHINE_STATUS).orderBy('set').onSnapshot(snapshot => {
-            machineStatus = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            machineStatus = snapshot.docs.map(doc => {
+                const machineData = { id: doc.id, ...doc.data() };
+                // Ensure lastTubCleaned exists for washers, default to null
+                if (machineData.type === 'Washer' && !machineData.lastTubCleaned) {
+                    machineData.lastTubCleaned = null;
+                    // Optionally update Firestore to reflect this default
+                    // db.collection(COLLECTIONS.MACHINE_STATUS).doc(doc.id).update({ lastTubCleaned: null });
+                }
+                return machineData;
+            });
              if (machineStatus.length !== (machineConfig.numWashers + machineConfig.numDryers)) {
                 initializeMachineStatus();
             }
-            renderOwnerMachineStatus();
+            renderOwnerMachineStatus(); // Re-render machine status with new tub cleaning info
+            updateDashboardTubCleaningAlert(); // Re-evaluate dashboard alert
         });
 
         db.collection(COLLECTIONS.TRANSACTIONS)
@@ -832,6 +878,7 @@
         allElements.pickupDashboardForCollection.textContent = `₱${totalValueForCollection.toFixed(2)} (${forCollectionCount} orders)`;
 
         allElements.customerPromoBtn.style.display = shopSettings.smsEnabled ? 'flex' : 'none';
+        updateDashboardTubCleaningAlert();
     }
 
     async function getTotalCollectedToday() {
@@ -867,7 +914,8 @@
         document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
         document.getElementById(`tab-button-${tabName}`).classList.add('active');
         if (tabName === 'machines') {
-            renderOwnerMachineStatus();
+            renderOwnerMachineStatus(); // This will now include per-washer cleaning dates
+            renderTubCleaningSettings(); // This will render the global interval
         } else if (tabName === 'config') {
             renderSmsSettings();
         }
@@ -1123,20 +1171,235 @@
         }
     }
 
-    function renderMachineSettings() { document.getElementById('settingNumWashers').value = machineConfig.numWashers; document.getElementById('settingNumDryers').value = machineConfig.numDryers; }
+    function renderMachineSettings() {
+        document.getElementById('settingNumWashers').value = machineConfig.numWashers;
+        document.getElementById('settingNumDryers').value = machineConfig.numDryers;
+        renderTubCleaningSettings(); // Call to render global tub cleaning interval
+    }
+
+    // UPDATED FUNCTION: Renders global tub cleaning interval settings
+    function renderTubCleaningSettings() {
+        allElements.tubCleaningIntervalDays.value = machineConfig.tubCleaning.intervalDays;
+        // The individual lastCleaned inputs are now rendered in getMachineManagerHTML
+    }
+
+    // UPDATED FUNCTION: Saves global tub cleaning interval to Firestore
+    async function saveTubCleaningSettings() {
+        const intervalDays = parseInt(allElements.tubCleaningIntervalDays.value);
+
+        if (isNaN(intervalDays) || intervalDays <= 0) {
+            return Swal.fire('Invalid Input', 'Cleaning Interval must be a positive number of days.', 'error');
+        }
+
+        showLoading(true, 'Saving global tub cleaning interval...');
+        try {
+            await db.collection(COLLECTIONS.CONFIG).doc('machineConfig').update({
+                'tubCleaning.intervalDays': intervalDays
+            });
+            Toast.fire({ icon: 'success', title: 'Global tub cleaning interval saved!' });
+        } catch (error) {
+            console.error("Error saving tub cleaning settings:", error);
+            Swal.fire('Error', 'Could not save tub cleaning interval.', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // NEW FUNCTION: Marks a specific washer's tub as cleaned today
+    async function markWasherTubCleanedToday(washerId) {
+        const today = dayjs().tz(TIMEZONE).startOf('day').toISOString();
+        const { isConfirmed } = await Swal.fire({
+            title: `Confirm Cleaning for ${washerId}`,
+            text: `Are you sure you want to mark ${washerId}'s tub as cleaned today?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Mark Cleaned',
+            confirmButtonColor: '#22c55e'
+        });
+
+        if (isConfirmed) {
+            showLoading(true, `Marking ${washerId} as cleaned...`);
+            try {
+                await db.collection(COLLECTIONS.MACHINE_STATUS).doc(washerId).update({
+                    'lastTubCleaned': today
+                });
+                Toast.fire({ icon: 'success', title: `${washerId} tub marked as cleaned today!` });
+            } catch (error) {
+                console.error(`Error marking ${washerId} as cleaned:`, error);
+                Swal.fire('Error', `Could not mark ${washerId} as cleaned.`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+    }
+
+    // UPDATED FUNCTION: Checks for tub cleaning reminders for all washers on login
+    async function checkTubCleaningReminder() {
+        const today = dayjs().tz(TIMEZONE).startOf('day');
+        const intervalDays = machineConfig.tubCleaning.intervalDays;
+        const alerts = [];
+
+        if (!intervalDays || intervalDays <= 0) {
+            alerts.push('Global cleaning interval not configured or invalid. Please set it in Owner Settings > Machines.');
+        }
+
+        machineStatus.filter(m => m.type === 'Washer').forEach(washer => {
+            if (!washer.lastTubCleaned) {
+                alerts.push(`Washer ${washer.id} tub cleaning date is not set.`);
+                return;
+            }
+
+            const lastCleaned = dayjs(washer.lastTubCleaned).tz(TIMEZONE).startOf('day');
+
+            if (!lastCleaned.isValid()) {
+                console.error(`Invalid lastTubCleaned date for ${washer.id}:`, washer.lastTubCleaned);
+                return;
+            }
+
+            const nextCleaningDate = lastCleaned.add(intervalDays, 'day');
+            const daysSinceLastCleaned = today.diff(lastCleaned, 'day');
+
+            if (today.isSame(nextCleaningDate, 'day')) {
+                alerts.push(`Washer ${washer.id}: Due TODAY! (last cleaned ${daysSinceLastCleaned} days ago)`);
+            } else if (today.isAfter(nextCleaningDate, 'day')) {
+                const daysOverdue = today.diff(nextCleaningDate, 'day');
+                alerts.push(`Washer ${washer.id}: OVERDUE by ${daysOverdue} days! (last cleaned ${daysSinceLastCleaned} days ago)`);
+            }
+        });
+
+        if (alerts.length > 0) {
+            let htmlMessage = '<div class="text-left space-y-2">';
+            alerts.forEach(alert => {
+                htmlMessage += `<p>${alert}</p>`;
+            });
+            htmlMessage += '</div>';
+
+            await Swal.fire({
+                title: '🧼 Tub Cleaning Reminders',
+                html: htmlMessage,
+                icon: 'warning',
+                confirmButtonText: 'Understood',
+                showClass: {
+                    popup: 'swal2-noanimation', // Disable enter animation
+                    backdrop: 'swal2-noanimation' // Disable backdrop animation
+                },
+                hideClass: {
+                    popup: '', // Disable exit animation
+                    backdrop: '' // Disable backdrop animation
+                },
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+            });
+        }
+    }
+
+    // UPDATED FUNCTION: Updates the tub cleaning alert on the dashboard
+    function updateDashboardTubCleaningAlert() {
+        const alertDiv = allElements.tubCleaningDashboardAlert;
+        alertDiv.classList.add('hidden'); // Hide by default
+
+        const today = dayjs().tz(TIMEZONE).startOf('day');
+        const intervalDays = machineConfig.tubCleaning.intervalDays;
+        const criticalAlerts = []; // Store alerts that are due today or overdue
+
+        if (!intervalDays || intervalDays <= 0) {
+            alertDiv.textContent = 'Global cleaning interval not configured. Check Owner Settings.';
+            alertDiv.className = 'mt-4 p-3 rounded-lg text-center font-semibold border bg-gray-100 text-gray-700';
+            alertDiv.classList.remove('hidden');
+            return;
+        }
+
+        machineStatus.filter(m => m.type === 'Washer').forEach(washer => {
+            if (!washer.lastTubCleaned) {
+                criticalAlerts.push(`Washer ${washer.id} cleaning date not set.`);
+                return;
+            }
+
+            const lastCleaned = dayjs(washer.lastTubCleaned).tz(TIMEZONE).startOf('day');
+            if (!lastCleaned.isValid()) {
+                // Log error but don't stop the whole dashboard
+                console.error(`Invalid lastTubCleaned date for ${washer.id}:`, washer.lastTubCleaned);
+                return;
+            }
+
+            const nextCleaningDate = lastCleaned.add(intervalDays, 'day');
+            const daysOverdue = today.diff(nextCleaningDate, 'day'); // positive if overdue, 0 if due today
+
+            if (daysOverdue > 0) { // Overdue
+                criticalAlerts.push(`Washer ${washer.id} OVERDUE by ${daysOverdue} days.`);
+            } else if (daysOverdue === 0) { // Due today
+                criticalAlerts.push(`Washer ${washer.id} due TODAY.`);
+            }
+        });
+
+        if (criticalAlerts.length > 0) {
+            let message = '';
+            let bgColor = '';
+            let textColor = '';
+            let borderColor = '';
+
+            if (criticalAlerts.some(alert => alert.includes('OVERDUE'))) {
+                message = `⚠️ Tub Cleaning OVERDUE: ${criticalAlerts.filter(a => a.includes('OVERDUE')).join(' ')}`;
+                bgColor = 'bg-red-100';
+                textColor = 'text-red-800';
+                borderColor = 'border-red-200';
+            } else {
+                message = `🔔 Tub Cleaning Due: ${criticalAlerts.join(' ')}`;
+                bgColor = 'bg-yellow-100';
+                textColor = 'text-yellow-800';
+                borderColor = 'border-yellow-200';
+            }
+
+            alertDiv.innerHTML = message;
+            alertDiv.className = `mt-4 p-3 rounded-lg text-center font-semibold border ${bgColor} ${textColor} ${borderColor}`;
+            alertDiv.classList.remove('hidden');
+        } else {
+            alertDiv.classList.add('hidden'); // Ensure it's hidden if no critical alerts
+        }
+    }
+
 
     async function initializeMachineStatus() {
         const batch = db.batch();
+        const currentWashers = machineStatus.filter(m => m.type === 'Washer').map(m => m.id);
+        const currentDryers = machineStatus.filter(m => m.type === 'Dryer').map(m => m.id);
+
         const newStatus = [];
-        for (let i = 1; i <= machineConfig.numWashers; i++) { newStatus.push({ id: `W${i}`, type: 'Washer', set: i, cycleCount: 0, isActive: true }); }
-        for (let i = 1; i <= machineConfig.numDryers; i++) { newStatus.push({ id: `D${i}`, type: 'Dryer', set: i, cycleCount: 0, isActive: true }); }
+        for (let i = 1; i <= machineConfig.numWashers; i++) {
+            const washerId = `W${i}`;
+            const existingWasher = machineStatus.find(m => m.id === washerId);
+            newStatus.push({
+                id: washerId,
+                type: 'Washer',
+                set: i,
+                cycleCount: existingWasher ? existingWasher.cycleCount : 0,
+                isActive: existingWasher ? existingWasher.isActive : true,
+                lastTubCleaned: existingWasher ? existingWasher.lastTubCleaned : null // Persist or default
+            });
+        }
+        for (let i = 1; i <= machineConfig.numDryers; i++) {
+            const dryerId = `D${i}`;
+            const existingDryer = machineStatus.find(m => m.id === dryerId);
+            newStatus.push({
+                id: dryerId,
+                type: 'Dryer',
+                set: i,
+                cycleCount: existingDryer ? existingDryer.cycleCount : 0,
+                isActive: existingDryer ? existingDryer.isActive : true
+            });
+        }
 
-        const currentStatusSnapshot = await db.collection(COLLECTIONS.MACHINE_STATUS).get();
-        currentStatusSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+        // Delete old machines that no longer exist in config
+        machineStatus.forEach(m => {
+            if (!newStatus.some(nm => nm.id === m.id)) {
+                batch.delete(db.collection(COLLECTIONS.MACHINE_STATUS).doc(m.id));
+            }
+        });
 
+        // Add/Update new machines
         newStatus.forEach(m => {
             const docRef = db.collection(COLLECTIONS.MACHINE_STATUS).doc(m.id);
-            batch.set(docRef, m);
+            batch.set(docRef, m, { merge: true }); // Use merge to keep existing fields if any
         });
         await batch.commit();
     }
@@ -1155,19 +1418,24 @@
         }
     }
 
+    // UPDATED FUNCTION: Generates HTML for machine manager, including per-washer tub cleaning
     function getMachineManagerHTML(isEmployeeView = false) {
         let managerHTML = `<div id="${isEmployeeView ? 'employee-machine-manager' : 'owner-machine-manager'}" class="space-y-4">`;
-        for(let i = 1; i <= machineConfig.numWashers; i++) {
-            const washer = machineStatus.find(m => m.id === `W${i}`);
-            const dryer = machineStatus.find(m => m.id === `D${i}`);
-            if (!washer || !dryer) continue;
+        const sortedWashers = machineStatus.filter(m => m.type === 'Washer').sort((a, b) => a.set - b.set);
+
+        sortedWashers.forEach(washer => {
+            const dryer = machineStatus.find(m => m.id === `D${washer.set}`);
+            if (!dryer) return; // Should not happen if machine config is consistent
+
+            const lastCleanedDate = washer.lastTubCleaned ? dayjs(washer.lastTubCleaned).tz(TIMEZONE).format('MMM DD, YYYY') : 'Never';
+            const inputDateValue = washer.lastTubCleaned ? dayjs(washer.lastTubCleaned).tz(TIMEZONE).format('YYYY-MM-DD') : '';
 
             managerHTML += `
                 <div class="p-3 border rounded ${washer.isActive ? 'bg-white' : 'bg-gray-100 opacity-70'}">
                     <div class="flex justify-between items-center mb-2">
-                        <span class="font-bold text-lg text-gray-700">Set ${i}</span>
+                        <span class="font-bold text-lg text-gray-700">Set ${washer.set}</span>
                         <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" onchange="toggleSetStatus(${i})" ${washer.isActive ? 'checked' : ''} class="sr-only peer">
+                            <input type="checkbox" onchange="toggleSetStatus(${washer.set})" ${washer.isActive ? 'checked' : ''} class="sr-only peer">
                             <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                         </label>
                     </div>
@@ -1178,14 +1446,42 @@
                         <div><p class="font-semibold">${washer.id}</p><p>${washer.cycleCount} cycles</p></div>
                         <div><p class="font-semibold">${dryer.id}</p><p>${dryer.cycleCount} cycles</p></div>
                     </div>
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <h5 class="font-semibold text-blue-700 mb-2">Tub Cleaning for ${washer.id}</h5>
+                        <div class="space-y-2">
+                            <div>
+                                <label for="washer-last-cleaned-${washer.id}" class="block text-sm font-medium">Last Cleaned: <span class="font-normal text-gray-600">${lastCleanedDate}</span></label>
+                                <input id="washer-last-cleaned-${washer.id}" type="date" value="${inputDateValue}" onchange="saveWasherLastCleaned('${washer.id}', this.value)" class="border p-2 w-full mt-1 text-sm">
+                            </div>
+                            <button onclick="markWasherTubCleanedToday('${washer.id}')" class="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700 w-full">Mark ${washer.id} Cleaned Today</button>
+                        </div>
+                    </div>
                 </div>`;
-        }
+        });
         managerHTML += `</div>`;
         return managerHTML;
     }
+
+    // New function to save individual washer's last cleaned date
+    async function saveWasherLastCleaned(washerId, dateString) {
+        showLoading(true, `Saving ${washerId} cleaning date...`);
+        try {
+            const cleanedDate = dateString ? dayjs(dateString).tz(TIMEZONE).startOf('day').toISOString() : null;
+            await db.collection(COLLECTIONS.MACHINE_STATUS).doc(washerId).update({
+                'lastTubCleaned': cleanedDate
+            });
+            Toast.fire({ icon: 'success', title: `${washerId} cleaning date saved!` });
+        } catch (error) {
+            console.error(`Error saving ${washerId} cleaning date:`, error);
+            Swal.fire('Error', `Could not save ${washerId} cleaning date.`, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
     async function openMachineStatusManager() {
         await Swal.fire({
-            title: 'Manage Active Machine Sets',
+            title: 'Manage Active Machine Sets & Tub Cleaning',
             html: getMachineManagerHTML(true),
             width: '90%',
             maxWidth: '500px',
@@ -1203,17 +1499,17 @@
         }
 
         const r = await Swal.fire({
-            title: 'Confirm Reset',
-            text: "Updating machine counts will reset all cycle counts and statuses. Are you sure?",
+            title: 'Confirm Machine Count Update',
+            html: "Updating machine counts will **re-initialize all machine statuses and reset all cycle counts**.<br><br><b>Tub cleaning dates will be preserved where possible for existing machines.</b> Are you sure?",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Yes, update and reset!'
         });
 
         if (r.isConfirmed) {
-            machineConfig = { numWashers: nW, numDryers: nD };
-            await db.collection(COLLECTIONS.CONFIG).doc('machineConfig').set(machineConfig);
-            await initializeMachineStatus();
+            const updatedConfig = { numWashers: nW, numDryers: nD };
+            await db.collection(COLLECTIONS.CONFIG).doc('machineConfig').update(updatedConfig);
+            // initializeMachineStatus is called via snapshot listener on machineConfig change
             Toast.fire({ icon: 'success', title: 'Machine settings saved and counts reset!' });
         }
     }
@@ -1231,7 +1527,11 @@
             confirmButtonText: 'Yes, Reset All'
         });
         if (r.isConfirmed) {
-            await initializeMachineStatus();
+            const batch = db.batch();
+            machineStatus.forEach(m => {
+                batch.update(db.collection(COLLECTIONS.MACHINE_STATUS).doc(m.id), { cycleCount: 0 });
+            });
+            await batch.commit();
             Toast.fire({ icon: 'success', title: 'All cycle counts have been reset to zero.' });
         }
     }
@@ -2086,6 +2386,7 @@
         }
 
         allDashboardOrders.sort((a, b) => new Date(a.time) - new Date(b.time)).forEach(tx => renderPickupCard(tx, container));
+        updateDashboardTubCleaningAlert();
     }
     // #################################################################
     // ### END OF UPDATED FUNCTION ###
@@ -2954,11 +3255,28 @@
         const newData = { services: [], customers: [], transactions: [], config: {}, machineStatus: [] };
         if (Array.isArray(oldData.shop_services)) { newData.services = oldData.shop_services.filter(s => s && typeof s.label === 'string' && s.label.trim() !== '').map(s => { const id = s.id ? String(s.id) : s.label.trim().replace(/\s+/g, '_').replace(/[^\w-]/g, ''); return { ...s, id: id }; }); }
         if (Array.isArray(oldData.shop_customers)) { newData.customers = oldData.shop_customers.filter(c => c && c.name).map(c => { const phone = c.phone || ""; const invalidPhoneValues = ["none", "n", "n.", "no"]; const isValidPhone = typeof phone === 'string' && phone.trim().length > 3 && !invalidPhoneValues.includes(phone.toLowerCase().trim()); const id = isValidPhone ? phone : String(c.id); return { ...c, id: id }; }); }
-        newData.machineStatus = oldData.machine_status || [];
+        
+        // Handle tubCleaning migration for machineConfig and machineStatus
+        newData.config.machineConfig = oldData.machine_config || { numWashers: 2, numDryers: 2, tubCleaning: { intervalDays: 7 } };
+        if (oldData.machine_config && oldData.machine_config.tubCleaning && oldData.machine_config.tubCleaning.intervalDays) {
+            newData.config.machineConfig.tubCleaning.intervalDays = oldData.machine_config.tubCleaning.intervalDays;
+        } else {
+            newData.config.machineConfig.tubCleaning = { intervalDays: 7 }; // Ensure default interval
+        }
+
+        // Migrate lastTubCleaned to individual washers if it was globally set
+        const globalLastCleaned = (oldData.machine_config && oldData.machine_config.tubCleaning && oldData.machine_config.tubCleaning.lastCleaned) ? oldData.machine_config.tubCleaning.lastCleaned : null;
+        newData.machineStatus = (oldData.machine_status || []).map(m => {
+            if (m.type === 'Washer' && !m.lastTubCleaned && globalLastCleaned) {
+                return { ...m, lastTubCleaned: globalLastCleaned }; // Apply old global to individual washers
+            }
+            return m;
+        });
+
         newData.config.shopSettings = oldData.shop_settings || {};
         newData.config.orCounter = { value: oldData.global_or_counter || 0 };
         newData.config.appPassword = { value: oldData.app_password || 'root' };
-        newData.config.machineConfig = oldData.machine_config || { numWashers: 2, numDryers: 2 };
+        
         const transactionMap = new Map();
         for (const key in oldData) { if (/^\d{4}-\d{2}-\d{2}$/.test(key)) { if (Array.isArray(oldData[key])) { oldData[key].forEach(tx => { if (tx && tx.orNumber) transactionMap.set(tx.orNumber, tx); }); } } }
         if (oldData.pending_pickups) { const pending = Array.isArray(oldData.pending_pickups) ? oldData.pending_pickups : Object.values(oldData.pending_pickups); pending.forEach(tx => { if (tx && tx.orNumber) transactionMap.set(tx.orNumber, tx); }); }
@@ -3402,4 +3720,4 @@
   </script>
 </body>
 </html>
-``
+```
