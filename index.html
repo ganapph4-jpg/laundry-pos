@@ -1,3 +1,4 @@
+ 
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -262,7 +263,7 @@
             <div class="relative">
                 <input type="text" id="pickupSearchInput" placeholder="Filter pending orders by OR#, Name, or Phone..." class="border p-3 w-full rounded-md shadow-sm pl-10">
                 <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
             </div>
             <div id="pending-list-container" class="space-y-3"></div>
@@ -2739,27 +2740,32 @@
     }
 
     function filterMonthlyReportTable(searchTerm) {
+        console.log("filterMonthlyReportTable called with:", searchTerm); // Debugging line
         const tableContainer = document.getElementById('daily-breakdown-table');
         const lowerCaseTerm = searchTerm.toLowerCase().trim();
 
         if (!lowerCaseTerm) {
+            console.log("Search term empty, regenerating daily breakdown summary."); // Debugging line
             regenerateDailyBreakdownTable();
             return;
         }
 
+        console.log("Filtering monthlyReportTransactionCache (size:", monthlyReportTransactionCache.length, ") with term:", lowerCaseTerm); // Debugging line
         const filteredTransactions = monthlyReportTransactionCache.filter(tx => {
-            const nameMatch = tx.name.toLowerCase().includes(lowerCaseTerm);
+            // Ensure tx.name, tx.phone, tx.orNumber exist before calling .toLowerCase() or .includes()
+            const nameMatch = tx.name && tx.name.toLowerCase().includes(lowerCaseTerm);
             const phoneMatch = tx.phone && tx.phone.includes(lowerCaseTerm);
-            const orMatch = tx.orNumber.includes(lowerCaseTerm);
+            const orMatch = tx.orNumber && tx.orNumber.includes(lowerCaseTerm);
             return nameMatch || phoneMatch || orMatch;
         });
+        console.log("Filtered transactions count:", filteredTransactions.length); // Debugging line
 
         if (filteredTransactions.length > 0) {
             let tableHtml = `<table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th class="px-4 py-2">Date & OR#</th><th class="px-4 py-2">Customer</th><th class="px-4 py-2 text-right">Total</th><th class="px-4 py-2 text-center">Actions</th></tr></thead><tbody>`;
             filteredTransactions.sort((a,b) => new Date(b.time) - new Date(a.time)).forEach(tx => {
                  tableHtml += `<tr class="bg-white border-b">
                             <td class="px-4 py-2 font-medium"><div>${dayjs(tx.time).format('MMM DD')}</div><div class="text-xs text-gray-600">#${tx.orNumber}</div></td>
-                            <td class="px-4 py-2">${tx.name}</td>
+                            <td class="px-4 py-2">${tx.name || 'N/A'}</td>
                             <td class="px-4 py-2 text-right font-semibold">₱${tx.total.toFixed(2)}</td>
                             <td class="px-4 py-2 text-center">
                                 <button onclick="editTransaction('${tx.orNumber}')" class="bg-indigo-500 text-white px-2 py-1 rounded text-xs hover:bg-indigo-600">View/Edit</button>
@@ -2788,7 +2794,7 @@
         const dailyBreakdown = {};
         const tableContainer = document.getElementById('daily-breakdown-table');
         for (let i = 1; i <= daysInMonth; i++) dailyBreakdown[i] = { sales: 0, orders: 0, collected: 0 };
-        currentMonthSales.forEach(tx => { const d = dayjs(tx.time).tz(TIMEZONE).date(); dailyBreakdown[d].sales += tx.total; dailyDailyBreakdown[d].orders++; });
+        currentMonthSales.forEach(tx => { const d = dayjs(tx.time).tz(TIMEZONE).date(); dailyBreakdown[d].sales += tx.total; dailyBreakdown[d].orders++; });
         for (const [dateKey, amount] of Object.entries(collectedDataMap)) { const d = dayjs(dateKey).date(); if (dailyBreakdown[d]) dailyBreakdown[d].collected = amount; }
         
         let tableHtml = `<table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase bg-gray-100"><tr><th class="px-4 py-2">Date</th><th class="px-4 py-2 text-right">Orders</th><th class="px-4 py-2 text-right">Total Sales</th><th class="px-4 py-2 text-right">Collected (Cash)</th><th class="px-4 py-2 text-center">Actions</th></tr></thead><tbody>`;
