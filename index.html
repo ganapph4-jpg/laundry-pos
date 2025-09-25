@@ -1,4 +1,3 @@
- 
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -895,10 +894,13 @@
         snapshot.docs.forEach(doc => {
             const tx = doc.data();
             if (tx.balancePaidAmount) { 
-                 collectedSum += tx.balancePaidAmount;
+                 // BUG FIX: When a balance is paid, the collected amount is the cash tendered for that payment minus the change.
+                 collectedSum += (tx.balancePaidAmount - (tx.change || 0));
             } else if (tx.paymentType === 'down_payment') { 
-                 collectedSum += tx.amountPaid;
+                 // BUG FIX: For a down payment, the collected amount is the cash paid minus any change.
+                 collectedSum += (tx.amountPaid - (tx.change || 0));
             } else if (tx.paymentType === 'paid') { 
+                 // This is for orders paid in full from the start. The collected revenue is the order's total value.
                  collectedSum += tx.total; 
             }
         });
@@ -2314,7 +2316,16 @@
 
             } else if (newPaymentType === 'balance_paid') {
                 updatedData = {
-                    paymentType: 'paid', amountPaid: (currentTransaction.amountPaid || 0) + amountPaidInput,
+                    paymentType: 'paid',
+                    // #################################################
+                    // ### BUG FIX APPLIED ###
+                    // #################################################
+                    // Correctly calculates the total amount paid. It should be the initial
+                    // down payment plus the remaining balance that was just paid.
+                    amountPaid: (currentTransaction.amountPaid || 0) + amountDue,
+                    // #################################################
+                    // ### END OF BUG FIX ###
+                    // #################################################
                     balancePaidAmount: amountPaidInput, change: change,
                     paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0
                 };
@@ -3418,7 +3429,7 @@
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Basic ' + btoa(smsUsername + ':' + smsPassword),
+                    'Authorization': 'Basic ' + btoa(smsUsername + ':' + password),
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
