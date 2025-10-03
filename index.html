@@ -172,8 +172,9 @@
         <label class="block font-semibold">Payment Type:</label>
         <select id="paymentType" class="border p-2 w-full mb-2">
             <option value="collection">For Collection</option>
-            <option value="paid">Fully Paid</option>
-            <option value="down_payment">Down Payment</option> <!-- NEW: Down Payment Option -->
+            <option value="paid">Fully Paid (Cash)</option>
+            <option value="down_payment">Down Payment (Cash)</option> <!-- NEW: Down Payment Option -->
+            <option value="gcash">GCash (Fully Paid)</option> <!-- ### NEW ### GCash PAYMENT OPTION -->
         </select>
 
         <!-- ADDED: Optional Notes Field -->
@@ -386,7 +387,9 @@
                         <div><label for="settingShopName" class="block font-medium">Shop Name</label><input id="settingShopName" type="text" class="border p-2 w-full mt-1"></div>
                         <div><label for="settingShopAddress" class="block font-medium">Address</label><input id="settingShopAddress" type="text" class="border p-2 w-full mt-1"></div>
                         <div><label for="settingShopPhone" class="block font-medium">Phone Number</label><input id="settingShopPhone" type="text" class="border p-2 w-full mt-1"></div>
-                        <div><label for="settingQrUrl" class="block font-medium">QR Code URL (Optional)</label><input id="settingQrUrl" type="text" placeholder="e.g., https://facebook.com/yourshop" class="border p-2 w-full mt-1"></div>
+                        <div><label for="settingQrUrl" class="block font-medium">Receipt QR Code URL (Optional)</label><input id="settingQrUrl" type="text" placeholder="e.g., https://facebook.com/yourshop" class="border p-2 w-full mt-1"></div>
+                        <!-- ### NEW ### GCash QR Link Field -->
+                        <div><label for="settingGcashQrUrl" class="block font-medium">GCash QR Link (for Payment)</label><input id="settingGcashQrUrl" type="text" placeholder="e.g., https://i.postimg.cc/..." class="border p-2 w-full mt-1"></div>
                     </div>
                     <button onclick="saveShopInfo()" class="bg-blue-500 text-white px-4 py-2 rounded mt-4 w-full">Save Shop Info</button>
                 </div>
@@ -550,7 +553,7 @@
     const allElements = {
         mainAppContainer: document.getElementById('main-app-container'),
         searchInputEl: document.getElementById('searchInput'), searchResultsEl: document.getElementById('searchResults'), nameEl: document.getElementById('name'), phoneEl: document.getElementById('phone'), paymentTypeEl: document.getElementById('paymentType'), totalEl: document.getElementById('total'), receiptSection: document.getElementById('receiptSection'), reviewDateEl: document.getElementById('reviewDate'), salesListEl: document.getElementById('salesList'), loadingIndicator: document.getElementById('loadingIndicator'),
-        settingsPanel: document.getElementById('settings-panel'), settingShopName: document.getElementById('settingShopName'), settingShopAddress: document.getElementById('settingShopAddress'), settingShopPhone: document.getElementById('settingShopPhone'), settingQrUrl: document.getElementById('settingQrUrl'), serviceButtonsContainer: document.getElementById('service-buttons-container'), serviceLoader: document.getElementById('service-loader'), serviceListContainer: document.getElementById('service-list-container'), serviceFormTitle: document.getElementById('service-form-title'), serviceId: document.getElementById('service-id'), serviceLabel: document.getElementById('service-label'), servicePrice: document.getElementById('service-price'), serviceType: document.getElementById('service-type'),
+        settingsPanel: document.getElementById('settings-panel'), settingShopName: document.getElementById('settingShopName'), settingShopAddress: document.getElementById('settingShopAddress'), settingShopPhone: document.getElementById('settingShopPhone'), settingQrUrl: document.getElementById('settingQrUrl'), settingGcashQrUrl: document.getElementById('settingGcashQrUrl'), serviceButtonsContainer: document.getElementById('service-buttons-container'), serviceLoader: document.getElementById('service-loader'), serviceListContainer: document.getElementById('service-list-container'), serviceFormTitle: document.getElementById('service-form-title'), serviceId: document.getElementById('service-id'), serviceLabel: document.getElementById('service-label'), servicePrice: document.getElementById('service-price'), serviceType: document.getElementById('service-type'),
         receiptShopName: document.getElementById('receiptShopName'), receiptShopAddress: document.getElementById('receiptShopAddress'), receiptShopPhone: document.getElementById('receiptShopPhone'), receiptQrCode: document.getElementById('receipt-qrcode'),
         currentPasswordEl: document.getElementById('currentPassword'), newPasswordEl: document.getElementById('newPassword'), confirmPasswordEl: document.getElementById('confirmPassword'),
         posView: document.getElementById('pos-view'), toPosBtn: document.getElementById('to-pos-btn'), findOrderSection: document.getElementById('find-order-section'),
@@ -677,7 +680,7 @@
     function setupRealtimeListeners() {
         db.collection(COLLECTIONS.CONFIG).doc('shopSettings').onSnapshot(doc => {
             const defaultSettings = {
-                name: "MAMA'S LOVE LAUNDRY", address: "123 Laundry St, Manila", phone: "0912-345-6789", qrUrl: "",
+                name: "MAMA'S LOVE LAUNDRY", address: "123 Laundry St, Manila", phone: "0912-345-6789", qrUrl: "", gcashQrUrl: "",
                 smsEnabled: false,
                 smsUsername: "", 
                 smsPassword: "", 
@@ -1030,6 +1033,7 @@
         allElements.settingShopAddress.value = shopSettings.address;
         allElements.settingShopPhone.value = shopSettings.phone;
         allElements.settingQrUrl.value = shopSettings.qrUrl || '';
+        allElements.settingGcashQrUrl.value = shopSettings.gcashQrUrl || '';
         document.title = `${shopSettings.name} POS`;
     }
 
@@ -1038,7 +1042,8 @@
             name: allElements.settingShopName.value,
             address: allElements.settingShopAddress.value,
             phone: allElements.settingShopPhone.value,
-            qrUrl: allElements.settingQrUrl.value
+            qrUrl: allElements.settingQrUrl.value,
+            gcashQrUrl: allElements.settingGcashQrUrl.value
         };
         await db.collection(COLLECTIONS.CONFIG).doc('shopSettings').update(newShopSettings);
         Toast.fire({ icon: 'success', title: 'Shop info saved!' });
@@ -1621,42 +1626,107 @@
         });
 
         if (r.isConfirmed) {
-            let amountPaid = 0;
-            let balanceDue = total;
-            let change = 0;
-            let dashboardFinished = false;
-
-            if (paymentType === 'paid') {
-                const amountPaidInput = await getAmountReceived(total, total, 'Amount Received');
-                if (amountPaidInput === null) return;
-                amountPaid = amountPaidInput;
-                balanceDue = 0;
-                change = amountPaidInput - total;
-                if (!shopSettings.smsEnabled) {
-                    dashboardFinished = true;
+            if (paymentType === 'gcash') {
+                if (!shopSettings.gcashQrUrl) {
+                    return Swal.fire('Not Configured', 'GCash QR Link is not set. The shop owner must configure it in Owner Settings > Shop Config.', 'error');
                 }
-            } else if (paymentType === 'down_payment') {
-                const downPaymentAmountInput = await getAmountReceived(0.01, total, 'Down Payment Amount');
-                if (downPaymentAmountInput === null) return;
-                amountPaid = downPaymentAmountInput;
-                balanceDue = Math.max(0, total - downPaymentAmountInput);
-                change = Math.max(0, downPaymentAmountInput - total);
+
+                const gcashResult = await Swal.fire({
+                    title: `GCash Payment: ₱${total.toFixed(2)}`,
+                    html: `
+                        <p>Please have the customer scan the QR code to pay.</p>
+                        <div id="gcash-qrcode-container" class="my-4 flex justify-center p-4 bg-white rounded-lg"></div>
+                        <p class="text-sm text-red-600 font-semibold">Verify the payment on your device before confirming.</p>
+                    `,
+                    width: '500px', // ### UPDATED ### Larger modal width
+                    confirmButtonText: 'I have confirmed the payment',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cancel Order',
+                    didOpen: () => {
+                        const qrContainer = document.getElementById('gcash-qrcode-container');
+                        const url = shopSettings.gcashQrUrl;
+                        try {
+                             if (url.match(/\.(jpeg|jpg|gif|png)$/)) {
+                                // It's a direct image link, display it
+                                qrContainer.innerHTML = `<img src="${url}" alt="GCash QR Code" class="w-80 h-80 object-contain mx-auto">`; // ### UPDATED ### Larger image size
+                            } else {
+                                // It's a link, so generate a QR code from it
+                                const qr = qrcode(0, 'L');
+                                qr.addData(url);
+                                qr.make();
+                                qrContainer.innerHTML = qr.createImgTag(10, 12); // ### UPDATED ### Larger generated QR size
+                            }
+                        } catch (e) {
+                            console.error("GCash QR Code generation/display failed:", e);
+                            qrContainer.innerHTML = '<p class="text-red-500">Could not generate or display QR code. Check the link in settings.</p>';
+                        }
+                    }
+                });
+
+                if (gcashResult.isConfirmed) {
+                    const orderData = {
+                        name, phone, cart: [...cart], total,
+                        paymentType: 'paid', // Internally, it's a paid order
+                        paymentMethod: 'gcash', // Specific method
+                        amountPaid: total, // For gcash, amount paid is always the total
+                        change: 0,
+                        notes,
+                        balanceDue: 0,
+                        smsSent: false,
+                        dashboardFinished: !shopSettings.smsEnabled
+                    };
+                    clearForm();
+                    Toast.fire({ icon: 'success', title: 'GCash Order submitted!' });
+                    processAndSaveOrder(orderData).catch(err => {
+                        console.error("Failed to save order:", err);
+                        Swal.fire('Save Failed', 'Could not save the order to the database.', 'error');
+                    });
+                }
+
+            } else { // Handle Cash payments (collection, paid, down_payment)
+                let amountPaid = 0;
+                let balanceDue = total;
+                let change = 0;
+                let dashboardFinished = false;
+
+                if (paymentType === 'paid') {
+                    const amountPaidInput = await getAmountReceived(total, total, 'Amount Received');
+                    if (amountPaidInput === null) return;
+                    amountPaid = amountPaidInput;
+                    balanceDue = 0;
+                    change = amountPaidInput - total;
+                    if (!shopSettings.smsEnabled) {
+                        dashboardFinished = true;
+                    }
+                } else if (paymentType === 'down_payment') {
+                    const downPaymentAmountInput = await getAmountReceived(0.01, total, 'Down Payment Amount');
+                    if (downPaymentAmountInput === null) return;
+                    amountPaid = downPaymentAmountInput;
+                    balanceDue = Math.max(0, total - downPaymentAmountInput);
+                    change = Math.max(0, downPaymentAmountInput - total);
+                }
+
+                const orderData = {
+                    name, phone, cart: [...cart], total, paymentType,
+                    paymentMethod: 'cash',
+                    amountPaid, change, notes, balanceDue, smsSent: false,
+                    dashboardFinished: dashboardFinished
+                };
+
+                clearForm();
+                Toast.fire({ icon: 'success', title: 'Order submitted!' });
+
+                processAndSaveOrder(orderData).catch(err => {
+                    console.error("Failed to save order:", err);
+                    Swal.fire('Save Failed', 'Could not save the order to the database. Please check your internet connection and try again.', 'error');
+                });
             }
-
-            const orderData = { name, phone, cart: [...cart], total, paymentType, amountPaid, change, notes, balanceDue, smsSent: false, dashboardFinished: dashboardFinished };
-
-            clearForm();
-            Toast.fire({icon: 'success', title: 'Order submitted!'});
-
-            processAndSaveOrder(orderData).catch(err => {
-                console.error("Failed to save order:", err);
-                Swal.fire('Save Failed', 'Could not save the order to the database. Please check your internet connection and try again.', 'error');
-            });
         }
     }
 
+
     async function processAndSaveOrder(orderData) {
-        const { name, phone, cart, total, paymentType, amountPaid, notes, balanceDue, change, smsSent, dashboardFinished } = orderData;
+        const { name, phone, cart, total, paymentType, paymentMethod, amountPaid, notes, balanceDue, change, smsSent, dashboardFinished } = orderData;
 
         const time = dayjs().tz(TIMEZONE).toISOString();
         const orCounterRef = db.collection(COLLECTIONS.CONFIG).doc('orCounter');
@@ -1975,6 +2045,7 @@
         try {
             const encoder = new EscPosEncoder();
             const itemWidth = 20, priceWidth = 10;
+            const paymentMethod = (tx.paymentMethod || 'cash').toUpperCase();
 
             encoder.initialize()
                    .align('center').bold(true).text(shopSettings.name).newline()
@@ -2000,10 +2071,12 @@
             let paymentStatusLine = '';
 
             if (tx.paymentType === 'paid' && !tx.balancePaidAmount) { 
-                paymentStatusLine = '*** FULLY PAID ***';
-                encoder.align('left')
-                       .text(`${'CASH'.padEnd(itemWidth)}${`P${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}`).newline()
-                       .text(`${'CHANGE'.padEnd(itemWidth)}${`P${tx.change.toFixed(2)}`.padStart(priceWidth)}`).newline();
+                paymentStatusLine = `*** FULLY PAID VIA ${paymentMethod} ***`;
+                 if (paymentMethod === 'CASH') {
+                    encoder.align('left')
+                           .text(`${'CASH'.padEnd(itemWidth)}${`P${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}`).newline()
+                           .text(`${'CHANGE'.padEnd(itemWidth)}${`P${tx.change.toFixed(2)}`.padStart(priceWidth)}`).newline();
+                 }
             } else if (tx.paymentType === 'down_payment') {
                 paymentStatusLine = '*** DOWN PAYMENT ***';
                 encoder.align('left')
@@ -2068,10 +2141,14 @@
         document.getElementById('receipt-items-compact').innerHTML = itemsHtml;
         let summaryHtml = `<div>${'TOTAL'.padEnd(itemWidth)}${`₱${tx.total.toFixed(2)}`.padStart(priceWidth)}</div>`;
         let paymentStatusDisplay = '';
+        const paymentMethod = (tx.paymentMethod || 'cash').toUpperCase();
+        
         if (tx.paymentType === 'paid' && !tx.balancePaidAmount) {
-            paymentStatusDisplay = 'FULLY PAID';
-            summaryHtml += `<div>${'CASH'.padEnd(itemWidth)}${`₱${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}</div>`;
-            summaryHtml += `<div>${'CHANGE'.padEnd(itemWidth)}${`₱${tx.change.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            paymentStatusDisplay = `FULLY PAID via ${paymentMethod}`;
+            if (paymentMethod === 'CASH') {
+                summaryHtml += `<div>${'CASH'.padEnd(itemWidth)}${`₱${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}</div>`;
+                summaryHtml += `<div>${'CHANGE'.padEnd(itemWidth)}${`₱${tx.change.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            }
         } else if (tx.paymentType === 'down_payment') {
             paymentStatusDisplay = 'DOWN PAYMENT';
             summaryHtml += `<div>${'PAID (DP)'.padEnd(itemWidth)}${`₱${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}</div>`;
@@ -2247,7 +2324,7 @@
         if (tx.dashboardFinished === undefined) tx.dashboardFinished = false;
 
         if (tx.paymentType === 'paid') {
-            statusTag = 'Paid'; statusTagColor = 'bg-green-200 text-green-800'; displayAmount = tx.total.toFixed(2);
+            statusTag = `Paid via ${(tx.paymentMethod || 'cash').toUpperCase()}`; statusTagColor = 'bg-green-200 text-green-800'; displayAmount = tx.total.toFixed(2);
         } else if (tx.paymentType === 'down_payment') {
             statusTag = 'Down Payment'; statusTagColor = 'bg-blue-200 text-blue-800';
             displayAmount = `${tx.amountPaid.toFixed(2)} (Bal: ${tx.balanceDue.toFixed(2)})`;
@@ -2306,7 +2383,7 @@
             if (newPaymentType === 'paid') {
                 updatedData = {
                     paymentType: 'paid', amountPaid: (currentTransaction.amountPaid || 0) + amountPaidInput, change: change,
-                    paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0
+                    paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0, paymentMethod: 'cash'
                 };
                 if (!shopSettings.smsEnabled) {
                     updatedData.dashboardFinished = true;
@@ -2327,7 +2404,7 @@
                     // ### END OF BUG FIX ###
                     // #################################################
                     balancePaidAmount: amountPaidInput, change: change,
-                    paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0
+                    paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(), balanceDue: 0, paymentMethod: 'cash'
                 };
                  if (!shopSettings.smsEnabled) {
                     updatedData.dashboardFinished = true;
