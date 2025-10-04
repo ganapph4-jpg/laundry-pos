@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3737,7 +3738,7 @@
         }
 
         if (!formattedPhone.startsWith('+639')) {
-             return Swal.fire('Invalid Phone Format', `The phone number '${testPhoneNumber}' must be a valid Philippine mobile number (e.g., +639xxxxxxxxx).`, 'error');
+            return Swal.fire('Invalid Phone Format', `The phone number '${testPhoneNumber}' must be a valid Philippine mobile number (e.g., +639xxxxxxxxx).`, 'error');
         }
 
         const testMessage = `This is a test message from ${shopName}. Your SMS configuration is working!`;
@@ -3758,18 +3759,42 @@
                 })
             });
 
+            const responseBodyText = await response.text();
+
             if (response.ok) {
-                Swal.fire('Success!', 'Test SMS sent successfully. Check the target phone.', 'success');
+                let result;
+                try {
+                    result = JSON.parse(responseBodyText);
+                } catch (e) {
+                    console.error("Response was not JSON:", responseBodyText);
+                    Swal.fire('Test Failed', `Received an unexpected response from the server. It might be an issue with the CORS proxy or the API. Status: ${response.status}`, 'error');
+                    return;
+                }
+
+                if (result && (result.status === 'error' || result.error || (result.message && result.message.toLowerCase().includes('fail')))) {
+                    Swal.fire('Test Failed', `The API reported an error: ${result.message || 'Unknown API error.'}`, 'error');
+                } else {
+                    Swal.fire('Success!', 'Test SMS sent successfully. Check the target phone.', 'success');
+                }
             } else {
-                const errorResult = await response.json().catch(() => ({ message: 'An unknown API error occurred.' }));
-                Swal.fire('Test Failed', `The API returned an error: ${errorResult.message || response.statusText}.`, 'error');
+                let errorDetail = response.statusText;
+                try {
+                    const errorResult = JSON.parse(responseBodyText);
+                    if (errorResult.message) {
+                        errorDetail = errorResult.message;
+                    }
+                } catch (e) {
+                    // Body was not JSON, do nothing.
+                }
+                Swal.fire('Test Failed', `The API returned an error: ${errorDetail}`, 'error');
             }
         } catch (error) {
-            Swal.fire('Network Error', `Could not send the test message. Please check your internet connection. Error: ${error.message}`, 'error');
+            Swal.fire('Network Error', `Could not send the test message. Please check your internet connection and ensure the CORS proxy is working. Error: ${error.message}`, 'error');
         } finally {
             showLoading(false);
         }
     }
+
 
     async function sendPickupReadySms(orNumber, customerPhone, customerName) {
         if (!shopSettings.smsEnabled) return;
@@ -3815,7 +3840,7 @@
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Basic ' + btoa(username + ':' + password),
+                    'Authorization': 'Basic ' + btoa(smsUsername + ':' + password),
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
@@ -4093,7 +4118,7 @@
         return snapshot.docs.map(doc => doc.data());
     }
 
-       async function getCollectedDataForPeriod(startDate, endDate) {
+    async function getCollectedDataForPeriod(startDate, endDate) {
         const collectedDataMap = {}; 
         const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
             .where('paymentTimestamp', '>=', startDate.toISOString())
