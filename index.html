@@ -129,6 +129,52 @@
      .promo-recipient-item:last-child {
         border-bottom: none;
     }
+
+    /* ### NEW ### Styles for the Modern Receipt Modal */
+    .receipt-modal-content {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.8rem;
+        text-align: left;
+        color: #333;
+    }
+    .receipt-modal-content hr {
+        border: none;
+        border-top: 1px dashed #aaa;
+        margin: 8px 0;
+    }
+    .receipt-modal-content .shop-info {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .receipt-modal-content .shop-info h3 {
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin: 0;
+    }
+    .receipt-modal-content .shop-info p {
+        margin: 0;
+        font-size: 0.75rem;
+    }
+    .receipt-modal-content .item-row {
+        display: flex;
+        justify-content: space-between;
+    }
+    .receipt-modal-content .summary-row {
+        display: flex;
+        justify-content: space-between;
+        font-weight: bold;
+    }
+    .receipt-modal-content .payment-status {
+        text-align: center;
+        font-weight: bold;
+        font-size: 1rem;
+        margin: 12px 0;
+        padding: 5px;
+        border-radius: 5px;
+    }
+    .receipt-modal-content .status-paid { background-color: #dcfce7; color: #166534; }
+    .receipt-modal-content .status-collection { background-color: #fefce8; color: #854d0e; }
+    .receipt-modal-content .status-dp { background-color: #e0f2fe; color: #0c4a6e; }
   </style>
 </head>
 <body class="bg-gray-100 p-4 text-base"> <!-- CHANGED: text-sm to text-base for better readability on tablets -->
@@ -523,6 +569,7 @@
     </div>
   </div>
 
+  <!-- This section is now only used as a template for the paper print function -->
   <div id="receiptSection" class="bg-white p-1 hidden print:block">
       <div class="receipt-content text-xs font-mono mx-auto" style="width: 57mm;">
           <div id="receipt-header" class="text-center space-y-0"> <!-- Reduced spacing -->
@@ -546,11 +593,6 @@
           <div class="text-center">
               <p>Thank you!</p>
           </div>
-      </div>
-      <div class="flex justify-center gap-2 mt-4 print:hidden">
-          <button id="bt-print-receipt-btn" class="bg-cyan-500 text-white px-4 py-2 rounded hidden">Print via Bluetooth</button>
-          <button onclick="window.print()" class="bg-indigo-500 text-white px-4 py-2 rounded">Print (Paper)</button>
-          <button onclick="closeReceipt()" class="bg-gray-500 text-white px-4 py-2 rounded">Close</button>
       </div>
   </div>
 
@@ -624,7 +666,6 @@
         // BT Elements
         pickupConnectPrinterBtn: document.getElementById('pickup-connect-printer-btn'),
         pickupPrinterStatusText: document.getElementById('pickup-printer-status-text'),
-        btPrintReceiptBtn: document.getElementById('bt-print-receipt-btn'),
         // Dashboard elements
         pickupDashboardSales: document.getElementById('pickup-dashboard-sales'),
         pickupDashboardForCollection: document.getElementById('pickup-dashboard-for-collection'),
@@ -657,7 +698,71 @@
         allElements.loadingIndicator.style.display = show ? 'flex' : 'none';
     }
 
-    function closeReceipt() { allElements.receiptSection.classList.add('hidden'); allElements.findOrderSection.classList.remove('hidden'); }
+    // This function is now only a helper for paper printing
+    function preparePaperReceipt(tx) {
+        let detailsHtml = `
+            OR #: ${tx.orNumber}<br>
+            Date: ${dayjs(tx.time).format('MM/DD/YY h:mm A')}<br>
+            Cust: ${tx.name} (${tx.phone || 'N/A'})
+        `;
+        if (tx.perfume) {
+            detailsHtml += `<br>Perfume: ${tx.perfume}`;
+        }
+        document.getElementById('receipt-details-compact').innerHTML = detailsHtml;
+
+        const itemWidth = 20; const priceWidth = 10;
+        let itemsHtml = tx.cart.map(item => {
+            const label = item.label.length > itemWidth ? item.label.substring(0, itemWidth - 1) + '.' : item.label;
+            const price = `₱${item.price.toFixed(2)}`;
+            return `<div>${label.padEnd(itemWidth)}${price.padStart(priceWidth)}</div>`;
+        }).join('');
+        document.getElementById('receipt-items-compact').innerHTML = itemsHtml;
+        let summaryHtml = `<div>${'TOTAL'.padEnd(itemWidth)}${`₱${tx.total.toFixed(2)}`.padStart(priceWidth)}</div>`;
+        let paymentStatusDisplay = '';
+        const paymentMethod = (tx.paymentMethod || 'cash').toUpperCase();
+        
+        if (tx.paymentType === 'paid' && !tx.balancePaidAmount) {
+            paymentStatusDisplay = `FULLY PAID via ${paymentMethod}`;
+            if (paymentMethod === 'CASH') {
+                summaryHtml += `<div>${'CASH'.padEnd(itemWidth)}${`₱${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}</div>`;
+                summaryHtml += `<div>${'CHANGE'.padEnd(itemWidth)}${`₱${tx.change.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            }
+        } else if (tx.paymentType === 'down_payment') {
+            paymentStatusDisplay = 'DOWN PAYMENT';
+            summaryHtml += `<div>${'PAID (DP)'.padEnd(itemWidth)}${`₱${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            summaryHtml += `<div>${'BALANCE DUE'.padEnd(itemWidth)}${`₱${tx.balanceDue.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            if (tx.change > 0) {
+                summaryHtml += `<div>${'CHANGE'.padEnd(itemWidth)}${`₱${tx.change.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            }
+        } else if (tx.paymentType === 'collection') {
+            paymentStatusDisplay = 'FOR COLLECTION';
+        } else if (tx.balancePaidAmount) {
+            paymentStatusDisplay = 'BALANCE PAID';
+            summaryHtml += `<div>${'BALANCE PAID'.padEnd(itemWidth)}${`₱${tx.balancePaidAmount.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            if (tx.balanceDue > 0) {
+                summaryHtml += `<div>${'REMAINING'.padEnd(itemWidth)}${`₱${tx.balanceDue.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            }
+            if (tx.change > 0) {
+                summaryHtml += `<div>${'CHANGE'.padEnd(itemWidth)}${`₱${tx.change.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            }
+            summaryHtml += `<div>${'TOTAL COLLECTED'.padEnd(itemWidth)}${`₱${(tx.amountPaid).toFixed(2)}`.padStart(priceWidth)}</div>`;
+        }
+        summaryHtml += `<div class="font-bold">Payment Status: ${paymentStatusDisplay}</div>`;
+        if (tx.notes) {
+          summaryHtml += `<div class="font-bold">Notes: ${tx.notes}</div>`;
+        }
+        document.getElementById('receipt-summary-compact').innerHTML = summaryHtml;
+        allElements.receiptQrCode.innerHTML = '';
+        if (shopSettings.qrUrl) {
+            try {
+                const qr = qrcode(0, 'L');
+                qr.addData(shopSettings.qrUrl);
+                qr.make();
+                allElements.receiptQrCode.innerHTML = qr.createImgTag(3, 4);
+            } catch (e) { console.error("QR Code generation failed:", e); }
+        }
+    }
+
 
     function showView(viewId) {
         document.querySelectorAll('.main-view').forEach(view => view.classList.remove('active'));
@@ -1918,7 +2023,8 @@
         }
 
         await batch.commit();
-        showReceipt(finalTransactionData);
+        // ### MODIFIED ###: Show the new modal instead of the old receipt page
+        showReceiptModal(finalTransactionData);
     }
 
     async function saveBluetoothSettings() {
@@ -2185,20 +2291,17 @@
         }
     }
 
+    // ### MODIFIED ###: This is now just a wrapper for the modal.
     async function printOrderDirectly(tx) {
-        if (!bluetoothWriteCharacteristic) {
-            return Swal.fire({
-                title: 'Printer Not Connected',
-                text: 'Please connect a Bluetooth thermal printer first using the "Connect Printer" button on the dashboard.',
-                icon: 'warning'
-            });
-        }
-        await printBluetoothReceipt(tx);
+        showReceiptModal(tx);
     }
 
     async function printBluetoothReceipt(tx) {
         if (!tx) return Swal.fire('Error', 'No transaction data to print.', 'error');
-        if (!bluetoothWriteCharacteristic) return Swal.fire('Printer Error', 'Bluetooth printer is not connected. Please connect first.', 'error');
+        if (!bluetoothWriteCharacteristic) {
+            Swal.close(); // Close the receipt modal before showing the error
+            return Swal.fire('Printer Error', 'Bluetooth printer is not connected. Please connect first from the dashboard.', 'error');
+        }
 
         showLoading(true, 'Sending to printer...');
         try {
@@ -2281,6 +2384,7 @@
 
             await sendDataToBluetoothPrinter(encoder.getBuffer());
             if (!bluetoothSettings.autoPrint) { Toast.fire({ icon: 'success', title: 'Receipt sent to printer!' }); }
+            Swal.close(); // Close the modal after successful printing
 
         } catch (error) {
             console.error("Print failed:", error);
@@ -2290,77 +2394,105 @@
             showLoading(false);
         }
     }
-    function showReceipt(tx) {
-        let detailsHtml = `
-            OR #: ${tx.orNumber}<br>
-            Date: ${dayjs(tx.time).format('MM/DD/YY h:mm A')}<br>
-            Cust: ${tx.name} (${tx.phone || 'N/A'})
-        `;
-        if (tx.perfume) {
-            detailsHtml += `<br>Perfume: ${tx.perfume}`;
-        }
-        document.getElementById('receipt-details-compact').innerHTML = detailsHtml;
 
-        const itemWidth = 20; const priceWidth = 10;
-        let itemsHtml = tx.cart.map(item => {
-            const label = item.label.length > itemWidth ? item.label.substring(0, itemWidth - 1) + '.' : item.label;
-            const price = `₱${item.price.toFixed(2)}`;
-            return `<div>${label.padEnd(itemWidth)}${price.padStart(priceWidth)}</div>`;
-        }).join('');
-        document.getElementById('receipt-items-compact').innerHTML = itemsHtml;
-        let summaryHtml = `<div>${'TOTAL'.padEnd(itemWidth)}${`₱${tx.total.toFixed(2)}`.padStart(priceWidth)}</div>`;
+    // ### NEW/MODIFIED ###: The primary function for showing receipts in a modal.
+    function showReceiptModal(tx) {
         let paymentStatusDisplay = '';
+        let paymentStatusClass = '';
         const paymentMethod = (tx.paymentMethod || 'cash').toUpperCase();
-        
+        let summaryHtml = '';
+
         if (tx.paymentType === 'paid' && !tx.balancePaidAmount) {
             paymentStatusDisplay = `FULLY PAID via ${paymentMethod}`;
+            paymentStatusClass = 'status-paid';
             if (paymentMethod === 'CASH') {
-                summaryHtml += `<div>${'CASH'.padEnd(itemWidth)}${`₱${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}</div>`;
-                summaryHtml += `<div>${'CHANGE'.padEnd(itemWidth)}${`₱${tx.change.toFixed(2)}`.padStart(priceWidth)}</div>`;
+                summaryHtml += `<div class="summary-row"><span>Cash:</span><span>₱${tx.amountPaid.toFixed(2)}</span></div>`;
+                summaryHtml += `<div class="summary-row"><span>Change:</span><span>₱${tx.change.toFixed(2)}</span></div>`;
             }
         } else if (tx.paymentType === 'down_payment') {
             paymentStatusDisplay = 'DOWN PAYMENT';
-            summaryHtml += `<div>${'PAID (DP)'.padEnd(itemWidth)}${`₱${tx.amountPaid.toFixed(2)}`.padStart(priceWidth)}</div>`;
-            summaryHtml += `<div>${'BALANCE DUE'.padEnd(itemWidth)}${`₱${tx.balanceDue.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            paymentStatusClass = 'status-dp';
+            summaryHtml += `<div class="summary-row"><span>Paid (DP):</span><span>₱${tx.amountPaid.toFixed(2)}</span></div>`;
+            summaryHtml += `<div class="summary-row"><span>Balance Due:</span><span>₱${tx.balanceDue.toFixed(2)}</span></div>`;
             if (tx.change > 0) {
-                summaryHtml += `<div>${'CHANGE'.padEnd(itemWidth)}${`₱${tx.change.toFixed(2)}`.padStart(priceWidth)}</div>`;
+                summaryHtml += `<div class="summary-row"><span>Change:</span><span>₱${tx.change.toFixed(2)}</span></div>`;
             }
         } else if (tx.paymentType === 'collection') {
             paymentStatusDisplay = 'FOR COLLECTION';
+            paymentStatusClass = 'status-collection';
         } else if (tx.balancePaidAmount) {
             paymentStatusDisplay = 'BALANCE PAID';
-            summaryHtml += `<div>${'BALANCE PAID'.padEnd(itemWidth)}${`₱${tx.balancePaidAmount.toFixed(2)}`.padStart(priceWidth)}</div>`;
+            paymentStatusClass = 'status-paid';
+            summaryHtml += `<div class="summary-row"><span>Balance Paid:</span><span>₱${tx.balancePaidAmount.toFixed(2)}</span></div>`;
             if (tx.balanceDue > 0) {
-                summaryHtml += `<div>${'REMAINING'.padEnd(itemWidth)}${`₱${tx.balanceDue.toFixed(2)}`.padStart(priceWidth)}</div>`;
+                summaryHtml += `<div class="summary-row"><span>Remaining:</span><span>₱${tx.balanceDue.toFixed(2)}</span></div>`;
             }
             if (tx.change > 0) {
-                summaryHtml += `<div>${'CHANGE'.padEnd(itemWidth)}${`₱${tx.change.toFixed(2)}`.padStart(priceWidth)}</div>`;
+                summaryHtml += `<div class="summary-row"><span>Change:</span><span>₱${tx.change.toFixed(2)}</span></div>`;
             }
-            summaryHtml += `<div>${'TOTAL COLLECTED'.padEnd(itemWidth)}${`₱${(tx.amountPaid).toFixed(2)}`.padStart(priceWidth)}</div>`;
+            summaryHtml += `<div class="summary-row"><span>Total Collected:</span><span>₱${(tx.amountPaid).toFixed(2)}</span></div>`;
         }
-        summaryHtml += `<div class="font-bold">Payment Status: ${paymentStatusDisplay}</div>`;
-        if (tx.notes) {
-          summaryHtml += `<div class="font-bold">Notes: ${tx.notes}</div>`;
-        }
-        document.getElementById('receipt-summary-compact').innerHTML = summaryHtml;
-        allElements.receiptQrCode.innerHTML = '';
+
+        let qrCodeHtml = '';
         if (shopSettings.qrUrl) {
             try {
                 const qr = qrcode(0, 'L');
                 qr.addData(shopSettings.qrUrl);
                 qr.make();
-                allElements.receiptQrCode.innerHTML = qr.createImgTag(3, 4);
+                qrCodeHtml = `<div style="text-align:center; margin-top:10px;">${qr.createImgTag(3, 4)}</div>`;
             } catch (e) { console.error("QR Code generation failed:", e); }
         }
-        allElements.btPrintReceiptBtn.classList.toggle('hidden', !bluetoothWriteCharacteristic);
-        allElements.btPrintReceiptBtn.onclick = () => printBluetoothReceipt(tx);
+
+        const modalHtml = `
+            <div class="receipt-modal-content">
+                <div class="shop-info">
+                    <h3>${shopSettings.name}</h3>
+                    <p>${shopSettings.address}</p>
+                    <p>${shopSettings.phone}</p>
+                </div>
+                <hr>
+                <div><strong>OR#:</strong> ${tx.orNumber}</div>
+                <div><strong>Date:</strong> ${dayjs(tx.time).format('MM/DD/YY h:mm A')}</div>
+                <div><strong>Cust:</strong> ${tx.name} (${tx.phone || 'N/A'})</div>
+                ${tx.perfume ? `<div><strong>Perfume:</strong> ${tx.perfume}</div>` : ''}
+                <hr>
+                ${tx.cart.map(item => `<div class="item-row"><span>${item.label}</span><span>₱${item.price.toFixed(2)}</span></div>`).join('')}
+                <hr>
+                <div class="summary-row"><span>TOTAL:</span><span>₱${tx.total.toFixed(2)}</span></div>
+                ${summaryHtml}
+                <div class="payment-status ${paymentStatusClass}">${paymentStatusDisplay}</div>
+                ${tx.notes ? `<hr><div><strong>Notes:</strong> ${tx.notes}</div>` : ''}
+                ${qrCodeHtml}
+            </div>
+        `;
+        
+        Swal.fire({
+            title: 'Order Receipt',
+            html: modalHtml,
+            showConfirmButton: true,
+            confirmButtonText: 'Print (Thermal)',
+            showDenyButton: true,
+            denyButtonText: 'Print (Paper)',
+            showCancelButton: true,
+            cancelButtonText: 'Close',
+            confirmButtonColor: '#0891b2', // A cyan color
+            denyButtonColor: '#4f46e5', // An indigo color
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // If auto-print is on, it might have already printed. This gives a manual option.
+                printBluetoothReceipt(tx); 
+            } else if (result.isDenied) {
+                preparePaperReceipt(tx);
+                setTimeout(() => window.print(), 200); // Give a moment for the content to render
+            }
+        });
+
+        // Auto-print logic if enabled
         if (bluetoothSettings.autoPrint && bluetoothWriteCharacteristic) {
             printBluetoothReceipt(tx);
-        } else {
-            allElements.findOrderSection.classList.add('hidden');
-            allElements.receiptSection.classList.remove('hidden');
         }
     }
+
     async function getAmountReceived(minAmount, maxAmount, inputLabel = 'Amount Received') {
         return new Promise(resolve => {
             Swal.fire({
@@ -2483,6 +2615,7 @@
         allElements.searchResultsEl.innerHTML = '';
     }
 
+    // ### MODIFIED ###: This function now has a single "View Receipt" button and bold, colored names.
     function renderTransaction(tx, container, allowEditing = true) {
         const card = document.createElement('div');
         let statusTag, statusTagColor, payButtonHtml = '', smsButtonHtml = '';
@@ -2509,15 +2642,15 @@
         }
         
         const perfumeHtml = tx.perfume ? `<p class="mt-2 text-xs font-semibold text-pink-700">Perfume: ${tx.perfume}</p>` : '';
-
         const editButtonHtml = allowEditing ? `<button onclick='editTransaction("${tx.orNumber}")' class="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600">Edit</button>` : '';
+        const customerNameColor = getColorForText(tx.name);
 
         card.className = 'p-3 bg-white border rounded shadow-sm mb-2';
         card.innerHTML = `
             <div class="flex justify-between items-start">
                 <div>
                     <p class="font-bold text-base">OR#: ${tx.orNumber}</p>
-                    <p>${tx.name} - ${tx.phone || 'N/A'}</p>
+                    <p><strong class="font-extrabold text-lg ${customerNameColor}">${tx.name}</strong> - ${tx.phone || 'N/A'}</p>
                     <p class="text-xs text-gray-500">${dayjs(tx.time).format('MMM DD, YYYY - h:mm A')}</p>
                 </div>
                 <div class="flex flex-col items-end">
@@ -2531,8 +2664,7 @@
             <div class="mt-2 pt-2 border-t flex justify-end gap-2">
                 ${payButtonHtml} ${smsButtonHtml}
                 ${editButtonHtml}
-                <button onclick='printOrderDirectly(${JSON.stringify(tx)})' class="bg-gray-400 text-white px-3 py-1 rounded text-xs hover:bg-gray-500">Direct Print</button>
-                <button onclick='showReceipt(${JSON.stringify(tx)})' class="bg-gray-200 px-3 py-1 rounded text-xs hover:bg-gray-300">View Receipt</button>
+                <button onclick='showReceiptModal(${JSON.stringify(tx)})' class="bg-gray-400 text-white px-3 py-1 rounded text-xs hover:bg-gray-500">View Receipt</button>
             </div>
         `;
         container.appendChild(card);
@@ -2570,7 +2702,7 @@
 
             Toast.fire({ icon: 'success', title: `Order ${orNumber} Paid!` });
             const updatedTx = (await txRef.get()).data();
-            showReceipt(updatedTx);
+            showReceiptModal(updatedTx);
 
         } catch (error) {
             console.error("Error in processFinalPayment:", error);
@@ -2706,7 +2838,8 @@
         for (let i = 0; i < str.length; i++) { hash = str.charCodeAt(i) + ((hash << 5) - hash); }
         return colors[Math.abs(hash % colors.length)];
     }
-
+    
+    // ### MODIFIED ###: This function now has a "View Receipt" button and bold, colored names.
     function renderPickupCard(tx, container) {
         if (tx.dashboardFinished) return;
 
@@ -2748,7 +2881,7 @@
                 <p class="font-bold text-lg">OR# ${tx.orNumber}</p>
                 <span class="text-xs font-medium px-2 py-0.5 rounded-full ${cardConfig.statusTagColor}">${cardConfig.statusTag}</span>
             </div>
-            <p class="text-base"><span class="font-bold text-lg ${customerNameColor}">${tx.name}</span> <span class="font-normal text-gray-600">(${tx.phone || 'No Phone'})</span></p>
+            <p class="text-xl"><strong class="font-extrabold ${customerNameColor}">${tx.name}</strong> <span class="font-normal text-gray-600 text-base">(${tx.phone || 'No Phone'})</span></p>
             <p class="text-sm text-gray-500">Dropped off: ${displayTime}</p>
             ${tx.perfume ? `<p class="mt-1 text-sm font-semibold text-pink-700">Perfume: ${tx.perfume}</p>` : ''}
             ${tx.notes ? `<p class="mt-2 text-sm italic text-gray-700"><strong>Notes:</strong> ${tx.notes}</p>` : ''}
@@ -2770,11 +2903,11 @@
         payButton.onclick = cardConfig.buttonAction;
         buttonContainer.appendChild(payButton);
 
-        const printButton = document.createElement('button');
-        printButton.className = 'bg-gray-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-gray-600';
-        printButton.textContent = 'Print';
-        printButton.onclick = () => printOrderDirectly(tx);
-        buttonContainer.appendChild(printButton);
+        const viewReceiptButton = document.createElement('button');
+        viewReceiptButton.className = 'bg-gray-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-gray-600';
+        viewReceiptButton.textContent = 'View Receipt';
+        viewReceiptButton.onclick = () => showReceiptModal(tx);
+        buttonContainer.appendChild(viewReceiptButton);
 
         if (shopSettings.smsEnabled && tx.phone) {
             const smsButton = document.createElement('button');
