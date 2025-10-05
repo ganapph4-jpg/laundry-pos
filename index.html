@@ -2185,6 +2185,17 @@
         }
     }
 
+    async function printOrderDirectly(tx) {
+        if (!bluetoothWriteCharacteristic) {
+            return Swal.fire({
+                title: 'Printer Not Connected',
+                text: 'Please connect a Bluetooth thermal printer first using the "Connect Printer" button on the dashboard.',
+                icon: 'warning'
+            });
+        }
+        await printBluetoothReceipt(tx);
+    }
+
     async function printBluetoothReceipt(tx) {
         if (!tx) return Swal.fire('Error', 'No transaction data to print.', 'error');
         if (!bluetoothWriteCharacteristic) return Swal.fire('Printer Error', 'Bluetooth printer is not connected. Please connect first.', 'error');
@@ -2520,6 +2531,7 @@
             <div class="mt-2 pt-2 border-t flex justify-end gap-2">
                 ${payButtonHtml} ${smsButtonHtml}
                 ${editButtonHtml}
+                <button onclick='printOrderDirectly(${JSON.stringify(tx)})' class="bg-gray-400 text-white px-3 py-1 rounded text-xs hover:bg-gray-500">Direct Print</button>
                 <button onclick='showReceipt(${JSON.stringify(tx)})' class="bg-gray-200 px-3 py-1 rounded text-xs hover:bg-gray-300">View Receipt</button>
             </div>
         `;
@@ -2696,59 +2708,88 @@
     }
 
     function renderPickupCard(tx, container) {
-        // This condition is now redundant due to the new query, but is safe to keep.
-        if (tx.dashboardFinished) {
-            return;
+        if (tx.dashboardFinished) return;
+
+        const timeObj = dayjs(tx.time);
+        const displayTime = typeof timeObj.fromNow === 'function' ? `${timeObj.fromNow(true)} ago` : timeObj.format('MMM DD, YYYY');
+        const balanceDue = tx.balanceDue === undefined ? Math.max(0, tx.total - (tx.amountPaid || 0)) : tx.balanceDue;
+        const customerNameColor = getColorForText(tx.name);
+
+        let cardConfig = {};
+        if (tx.paymentType === 'down_payment') {
+            cardConfig = {
+                bgColor: 'bg-blue-50 border-blue-200',
+                statusTag: 'Down Payment',
+                statusTagColor: 'bg-blue-200 text-blue-800',
+                totalDisplay: `₱${tx.amountPaid.toFixed(2)} (Bal: ₱${balanceDue.toFixed(2)})`,
+                buttonAction: () => markAsPaidAndGetAmount(tx.orNumber, balanceDue, 'balance_paid'),
+                buttonText: 'Pay Balance'
+            };
+        } else if (tx.paymentType === 'collection') {
+            cardConfig = {
+                bgColor: 'bg-yellow-50 border-yellow-200',
+                statusTag: 'For Collection',
+                statusTagColor: 'bg-yellow-200 text-yellow-800',
+                totalDisplay: `₱${balanceDue.toFixed(2)}`,
+                buttonAction: () => markAsPaidAndGetAmount(tx.orNumber, tx.total, 'paid'),
+                buttonText: 'Mark as Paid'
+            };
         }
 
         const card = document.createElement('div');
-        const timeObj = dayjs(tx.time);
-        let displayTime, timeSuffix = ' ago';
-        if (typeof timeObj.fromNow === 'function') { displayTime = timeObj.fromNow(true); }
-        else { displayTime = timeObj.format('MMM DD, YYYY'); timeSuffix = ''; }
+        card.className = `p-4 border rounded-lg shadow-sm ${cardConfig.bgColor}`;
 
-        let bgColor, statusTag, statusTagColor, totalDisplay, payButtonHtml = '', smsButtonHtml = '';
-        const customerNameColor = getColorForText(tx.name);
+        const mainFlex = document.createElement('div');
+        mainFlex.className = 'flex flex-col md:flex-row justify-between gap-4';
 
-        if (tx.balanceDue === undefined) tx.balanceDue = Math.max(0, tx.total - (tx.amountPaid || 0));
+        const leftDiv = document.createElement('div');
+        leftDiv.innerHTML = `
+            <div class="flex items-baseline gap-2">
+                <p class="font-bold text-lg">OR# ${tx.orNumber}</p>
+                <span class="text-xs font-medium px-2 py-0.5 rounded-full ${cardConfig.statusTagColor}">${cardConfig.statusTag}</span>
+            </div>
+            <p class="text-base"><span class="font-bold text-lg ${customerNameColor}">${tx.name}</span> <span class="font-normal text-gray-600">(${tx.phone || 'No Phone'})</span></p>
+            <p class="text-sm text-gray-500">Dropped off: ${displayTime}</p>
+            ${tx.perfume ? `<p class="mt-1 text-sm font-semibold text-pink-700">Perfume: ${tx.perfume}</p>` : ''}
+            ${tx.notes ? `<p class="mt-2 text-sm italic text-gray-700"><strong>Notes:</strong> ${tx.notes}</p>` : ''}
+        `;
 
-        if (tx.paymentType === 'down_payment') {
-            bgColor = 'bg-blue-50 border-blue-200'; statusTag = 'Down Payment'; statusTagColor = 'bg-blue-200 text-blue-800';
-            totalDisplay = `₱${tx.amountPaid.toFixed(2)} (Bal: ₱${tx.balanceDue.toFixed(2)})`;
-            payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.balanceDue}, 'balance_paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Pay Balance</button>`;
-        } else if (tx.paymentType === 'collection') { 
-            bgColor = 'bg-yellow-50 border-yellow-200'; statusTag = 'For Collection'; statusTagColor = 'bg-yellow-200 text-yellow-800';
-            totalDisplay = `₱${tx.balanceDue.toFixed(2)}`;
-            payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.total}, 'paid')" class="bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600">Mark as Paid</button>`;
-        }
-        // NOTE: The 'paid' condition is removed as it will no longer appear on this dashboard.
+        const rightDiv = document.createElement('div');
+        rightDiv.className = 'flex flex-col items-start md:items-end';
+        
+        const totalP = document.createElement('p');
+        totalP.className = 'font-bold text-2xl mb-2';
+        totalP.textContent = cardConfig.totalDisplay;
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'flex items-center gap-2 flex-wrap justify-end';
+
+        const payButton = document.createElement('button');
+        payButton.className = 'bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600';
+        payButton.textContent = cardConfig.buttonText;
+        payButton.onclick = cardConfig.buttonAction;
+        buttonContainer.appendChild(payButton);
+
+        const printButton = document.createElement('button');
+        printButton.className = 'bg-gray-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-gray-600';
+        printButton.textContent = 'Print';
+        printButton.onclick = () => printOrderDirectly(tx);
+        buttonContainer.appendChild(printButton);
 
         if (shopSettings.smsEnabled && tx.phone) {
-             smsButtonHtml = `<button onclick="sendPickupReadySms('${tx.orNumber}', '${tx.phone}', '${tx.name}')" class="bg-purple-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-purple-600 ml-2">Send SMS</button>`;
+            const smsButton = document.createElement('button');
+            smsButton.className = 'bg-purple-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-purple-600';
+            smsButton.textContent = 'Send SMS';
+            smsButton.onclick = () => sendPickupReadySms(tx.orNumber, tx.phone, tx.name);
+            buttonContainer.appendChild(smsButton);
         }
         
-        const perfumeHtml = tx.perfume ? `<p class="mt-1 text-sm font-semibold text-pink-700">Perfume: ${tx.perfume}</p>` : '';
+        rightDiv.appendChild(totalP);
+        rightDiv.appendChild(buttonContainer);
 
-        card.className = `p-4 border rounded-lg shadow-sm ${bgColor}`;
-        card.innerHTML = `
-            <div class="flex flex-col md:flex-row justify-between gap-4">
-                <div>
-                    <div class="flex items-baseline gap-2">
-                        <p class="font-bold text-lg">OR# ${tx.orNumber}</p>
-                        <span class="text-xs font-medium px-2 py-0.5 rounded-full ${statusTagColor}">${statusTag}</span>
-                    </div>
-                    <p class="text-base"><span class="font-bold text-lg ${customerNameColor}">${tx.name}</span> <span class="font-normal text-gray-600">(${tx.phone || 'No Phone'})</span></p>
-                    <p class="text-sm text-gray-500">Dropped off: ${displayTime}${timeSuffix}</p>
-                    ${perfumeHtml}
-                    ${tx.notes ? `<p class="mt-2 text-sm italic text-gray-700"><strong>Notes:</strong> ${tx.notes}</p>` : ''}
-                </div>
-                <div class="flex flex-col items-start md:items-end">
-                    <p class="font-bold text-2xl mb-2">${totalDisplay}</p>
-                    <div class="flex items-center gap-2 flex-wrap justify-end">
-                        ${payButtonHtml} ${smsButtonHtml}
-                    </div>
-                </div>
-            </div>`;
+        mainFlex.appendChild(leftDiv);
+        mainFlex.appendChild(rightDiv);
+        card.appendChild(mainFlex);
         container.appendChild(card);
     }
     
@@ -4169,4 +4210,3 @@
   </script>
 </body>
 </html>
-```
