@@ -537,7 +537,23 @@
                     </div>
                 </div>
 
-                <div class="p-4 border rounded"><h3 class="text-lg font-semibold mb-3">Service Management</h3><div id="service-list-container" class="space-y-2 mb-4"></div><div class="p-3 bg-gray-50 rounded border"><h4 id="service-form-title" class="font-semibold mb-2">Add New Service</h4><input type="hidden" id="service-id"><div class="space-y-3"><div><label for="service-label" class="block font-medium">Service Name / Label</label><input id="service-label" type="text" placeholder="e.g., 8kg Mix, Bedsheet" class="border p-2 w-full mt-1"></div><div><label for="service-price" class="block font-medium">Price (₱)</label><input id="service-price" type="number" placeholder="e.g., 160 or 70" class="border p-2 w-full mt-1"></div><div><label for="service-type" class="block font-medium">Pricing Type</label><select id="service-type" class="border p-2 w-full mt-1"><option value="fixed">Fixed Price</option><option value="per_kg">Price per kg</option></select></div><div class="flex gap-2"><button onclick="saveService()" class="bg-green-500 text-white px-4 py-2 rounded w-full">Save Service</button><button onclick="clearServiceForm()" class="bg-gray-300 px-4 py-2 rounded w-full">Cancel</button></div></div></div></div></div>
+                <div class="p-4 border rounded"><h3 class="text-lg font-semibold mb-3">Service Management</h3><div id="service-list-container" class="space-y-2 mb-4"></div><div class="p-3 bg-gray-50 rounded border"><h4 id="service-form-title" class="font-semibold mb-2">Add New Service</h4><input type="hidden" id="service-id"><div class="space-y-3"><div><label for="service-label" class="block font-medium">Service Name / Label</label><input id="service-label" type="text" placeholder="e.g., 8kg Mix, Bedsheet" class="border p-2 w-full mt-1"></div><div><label for="service-price" class="block font-medium">Price (₱)</label><input id="service-price" type="number" placeholder="e.g., 160 or 70" class="border p-2 w-full mt-1"></div><div><label for="service-type" class="block font-medium">Pricing Type</label><select id="service-type" class="border p-2 w-full mt-1"><option value="fixed">Fixed Price</option><option value="per_kg">Price per kg</option></select></div>
+                        <!-- ### CHANGE START ### Added color selector for services -->
+                        <div>
+                            <label for="service-color" class="block font-medium">Button Color (for Fixed Price)</label>
+                            <select id="service-color" class="border p-2 w-full mt-1">
+                                <option value="blue">Blue (Default)</option>
+                                <option value="green">Green</option>
+                                <option value="red">Red</option>
+                                <option value="yellow">Yellow</option>
+                                <option value="indigo">Indigo</option>
+                                <option value="purple">Purple</option>
+                                <option value="pink">Pink</option>
+                            </select>
+                        </div>
+                        <!-- ### CHANGE END ### -->
+                        <div class="flex gap-2"><button onclick="saveService()" class="bg-green-500 text-white px-4 py-2 rounded w-full">Save Service</button><button onclick="clearServiceForm()" class="bg-gray-300 px-4 py-2 rounded w-full">Cancel</button></div></div></div></div>
+            </div>
             <div id="tab-content-data" class="settings-tab-content hidden space-y-6">
                 <!-- ### NEW ### Staff Security Section -->
                 <div class="p-4 border rounded border-green-300 bg-green-50">
@@ -652,7 +668,7 @@
     const allElements = {
         mainAppContainer: document.getElementById('main-app-container'),
         searchInputEl: document.getElementById('searchInput'), searchResultsEl: document.getElementById('searchResults'), nameEl: document.getElementById('name'), phoneEl: document.getElementById('phone'), paymentTypeEl: document.getElementById('paymentType'), totalEl: document.getElementById('total'), receiptSection: document.getElementById('receiptSection'), reviewDateEl: document.getElementById('reviewDate'), salesListEl: document.getElementById('salesList'), loadingIndicator: document.getElementById('loadingIndicator'),
-        settingsPanel: document.getElementById('settings-panel'), settingShopName: document.getElementById('settingShopName'), settingShopAddress: document.getElementById('settingShopAddress'), settingShopPhone: document.getElementById('settingShopPhone'), settingQrUrl: document.getElementById('settingQrUrl'), settingGcashQrUrl: document.getElementById('settingGcashQrUrl'), serviceButtonsContainer: document.getElementById('service-buttons-container'), serviceLoader: document.getElementById('service-loader'), serviceListContainer: document.getElementById('service-list-container'), serviceFormTitle: document.getElementById('service-form-title'), serviceId: document.getElementById('service-id'), serviceLabel: document.getElementById('service-label'), servicePrice: document.getElementById('service-price'), serviceType: document.getElementById('service-type'),
+        settingsPanel: document.getElementById('settings-panel'), settingShopName: document.getElementById('settingShopName'), settingShopAddress: document.getElementById('settingShopAddress'), settingShopPhone: document.getElementById('settingShopPhone'), settingQrUrl: document.getElementById('settingQrUrl'), settingGcashQrUrl: document.getElementById('settingGcashQrUrl'), serviceButtonsContainer: document.getElementById('service-buttons-container'), serviceLoader: document.getElementById('service-loader'), serviceListContainer: document.getElementById('service-list-container'), serviceFormTitle: document.getElementById('service-form-title'), serviceId: document.getElementById('service-id'), serviceLabel: document.getElementById('service-label'), servicePrice: document.getElementById('service-price'), serviceType: document.getElementById('service-type'), serviceColor: document.getElementById('service-color'),
         receiptShopName: document.getElementById('receiptShopName'), receiptShopAddress: document.getElementById('receiptShopAddress'), receiptShopPhone: document.getElementById('receiptShopPhone'), receiptQrCode: document.getElementById('receipt-qrcode'),
         currentPasswordEl: document.getElementById('currentPassword'), newPasswordEl: document.getElementById('newPassword'), confirmPasswordEl: document.getElementById('confirmPassword'),
         posView: document.getElementById('pos-view'), toPosBtn: document.getElementById('to-pos-btn'), findOrderSection: document.getElementById('find-order-section'),
@@ -896,7 +912,7 @@
             shopServices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             if (shopServices.length === 0) {
                 const defaultServices = [
-                    { label: "Regular 8kg", price: 160, type: "fixed" },
+                    { label: "Regular 8kg", price: 160, type: "fixed", color: "blue" },
                     { label: "Comforter", price: 70, type: "per_kg" },
                     { label: "Bedsheet", price: 70, type: "per_kg" }
                 ];
@@ -1304,6 +1320,18 @@
         }
     }
 
+    // ### CHANGE START ### Added color mapping for service buttons
+    const serviceButtonColorClasses = {
+        blue: 'bg-blue-500 hover:bg-blue-600 text-white',
+        green: 'bg-green-500 hover:bg-green-600 text-white',
+        red: 'bg-red-500 hover:bg-red-600 text-white',
+        yellow: 'bg-yellow-400 hover:bg-yellow-500 text-gray-800',
+        indigo: 'bg-indigo-500 hover:bg-indigo-600 text-white',
+        purple: 'bg-purple-500 hover:bg-purple-600 text-white',
+        pink: 'bg-pink-500 hover:bg-pink-600 text-white',
+    };
+    // ### CHANGE END ###
+
     function renderServiceButtons() {
         const c = allElements.serviceButtonsContainer;
         c.innerHTML = '';
@@ -1316,7 +1344,10 @@
             fC.innerHTML = '<label class="block font-semibold col-span-2">Fixed Price Services:</label>';
             fS.forEach(s => {
                 const b = document.createElement('button');
-                b.className = 'bg-blue-500 text-white p-3 rounded hover:bg-blue-600 transition flex flex-col items-center justify-center';
+                // ### CHANGE START ### Dynamically set button color
+                const colorClass = serviceButtonColorClasses[s.color] || serviceButtonColorClasses.blue;
+                b.className = `${colorClass} p-3 rounded transition flex flex-col items-center justify-center`;
+                // ### CHANGE END ###
                 b.innerHTML = `<span class="font-semibold">${s.label}</span><span class="text-xs">₱${s.price}</span>`;
                 b.onclick = function() { addToCart(s.label, s.price, this); };
                 fC.appendChild(b);
@@ -1353,6 +1384,9 @@
         Object.assign(allElements.serviceLabel, { value: '', readOnly: false });
         Object.assign(allElements.servicePrice, { value: '', readOnly: false });
         Object.assign(allElements.serviceType, { value: 'fixed', readOnly: false });
+        // ### CHANGE START ### Reset color dropdown
+        Object.assign(allElements.serviceColor, { value: 'blue' });
+        // ### CHANGE END ###
     }
 
     async function saveService() {
@@ -1360,9 +1394,14 @@
         const label = allElements.serviceLabel.value;
         const price = parseFloat(allElements.servicePrice.value);
         const type = allElements.serviceType.value;
+        // ### CHANGE START ### Get color value
+        const color = allElements.serviceColor.value;
+        // ### CHANGE END ###
         if (!label || isNaN(price)) return Swal.fire('Invalid Input', 'Please enter a valid label and price.', 'error');
 
-        const serviceData = { label, price, type };
+        // ### CHANGE START ### Add color to saved data
+        const serviceData = { label, price, type, color };
+        // ### CHANGE END ###
         showLoading(true, 'Saving...');
 
         try {
@@ -1388,6 +1427,9 @@
         allElements.serviceLabel.value = s.label;
         allElements.servicePrice.value = s.price;
         allElements.serviceType.value = s.type;
+        // ### CHANGE START ### Set color dropdown on edit
+        allElements.serviceColor.value = s.color || 'blue'; // Fallback to blue if color isn't set
+        // ### CHANGE END ###
     }
 
     async function deleteService(id) {
@@ -1816,7 +1858,22 @@
     function addToCart(label, price, button) { 
         cart.push({ label, price }); 
         renderCart(); 
-        if (button) { const oT = button.innerHTML, oC = button.className; button.innerHTML = `<svg class="inline-block w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Added!`; button.className = oC.replace(/bg-(blue|orange)-500/, 'bg-green-500').replace(/hover:bg-(blue|orange)-600/, ''); button.disabled = true; setTimeout(() => { button.innerHTML = oT; button.className = oC; button.disabled = false; }, 1200); } 
+        if (button) { 
+            const originalClassName = button.className;
+            const originalContent = button.innerHTML;
+            const color = Object.keys(serviceButtonColorClasses).find(key => originalClassName.includes(key)) || 'blue';
+            
+            // Use a specific success color (green) but remember the original for reverting
+            button.className = `${serviceButtonColorClasses.green} p-3 rounded transition flex flex-col items-center justify-center`;
+            button.innerHTML = `<svg class="inline-block w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Added!`; 
+            button.disabled = true; 
+            
+            setTimeout(() => { 
+                button.innerHTML = originalContent; 
+                button.className = originalClassName; 
+                button.disabled = false; 
+            }, 1200); 
+        } 
     }
 
     function addPerKgItemFromInput(id, label, pricePerKg, button) {
@@ -2670,6 +2727,7 @@
         container.appendChild(card);
     }
 
+    // ### CHANGE START ### Removed automatic receipt modal from this function
     async function processFinalPayment(orNumber, paymentMethod, amountTendered, amountDue, change, paymentTypeContext) {
         showLoading(true, 'Processing payment...');
         try {
@@ -2700,9 +2758,12 @@
 
             if (allElements.searchInputEl.value) { await searchTransactions(); }
 
-            Toast.fire({ icon: 'success', title: `Order ${orNumber} Paid!` });
-            const updatedTx = (await txRef.get()).data();
-            showReceiptModal(updatedTx);
+            // MODIFICATION: Replaced receipt modal with a simple success toast.
+            Toast.fire({ icon: 'success', title: `Order ${orNumber} marked as Paid!` });
+            
+            // The view will update automatically via the real-time listener.
+            // const updatedTx = (await txRef.get()).data();
+            // showReceiptModal(updatedTx); // REMOVED THIS LINE
 
         } catch (error) {
             console.error("Error in processFinalPayment:", error);
@@ -2711,6 +2772,7 @@
             showLoading(false);
         }
     }
+    // ### CHANGE END ###
 
     async function markAsPaidAndGetAmount(orNumber, amountDue, newPaymentType) {
         const result = await Swal.fire({
@@ -4152,8 +4214,7 @@
             await sendBulkPromo(formValues.message, formValues.recipients);
         }
     }
-
-    async function handleLoadPromoCustomers() {
+async function handleLoadPromoCustomers() {
         const filter = document.getElementById('swal-promo-filter').value;
         const recipientsBox = document.getElementById('swal-promo-recipients-box');
         recipientsBox.innerHTML = '<div class="inline-loader"></div>';
@@ -4343,3 +4404,4 @@
   </script>
 </body>
 </html>
+    
