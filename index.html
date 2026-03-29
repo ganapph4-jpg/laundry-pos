@@ -70,6 +70,62 @@
     /* NEW: General improvements for tablet touch behavior */
     body {
       touch-action: manipulation; /* Prevents double-tap zoom for better touch responsiveness */
+      position: relative;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(186,230,253,0.95), transparent 34%),
+        radial-gradient(circle at top right, rgba(165,243,252,0.85), transparent 28%),
+        linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 42%, #f8fafc 100%);
+      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      border-radius: 9999px;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.45;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0.18) 58%, rgba(255,255,255,0.05));
+      box-shadow: inset -8px -10px 16px rgba(255,255,255,0.12);
+      animation: pageBubbleFloat 14s ease-in-out infinite;
+    }
+    body::before {
+      width: 150px;
+      height: 150px;
+      top: 12%;
+      right: 4%;
+    }
+    body::after {
+      width: 90px;
+      height: 90px;
+      left: 3%;
+      bottom: 14%;
+      animation-delay: 2s;
+    }
+    .page-bubbles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+    .page-bubbles .bubble {
+      opacity: 0.34;
+      animation-duration: 12s;
+    }
+    .page-bubbles .b1 { width: 58px; height: 58px; top: 16%; left: 8%; }
+    .page-bubbles .b2 { width: 28px; height: 28px; top: 32%; right: 12%; animation-delay: 1.4s; }
+    .page-bubbles .b3 { width: 18px; height: 18px; top: 58%; left: 22%; animation-delay: 2.1s; }
+    .page-bubbles .b4 { width: 42px; height: 42px; bottom: 18%; right: 18%; animation-delay: 0.8s; }
+    .page-bubbles .b5 { width: 16px; height: 16px; bottom: 26%; left: 50%; animation-delay: 2.8s; }
+    .page-bubbles .b6 { width: 24px; height: 24px; top: 12%; left: 56%; animation-delay: 1s; }
+    #main-app-container,
+    #receiptSection {
+      position: relative;
+      z-index: 1;
     }
 
     /* ### NEW ### Hide main content before login */
@@ -175,9 +231,153 @@
     .receipt-modal-content .status-paid { background-color: #dcfce7; color: #166534; }
     .receipt-modal-content .status-collection { background-color: #fefce8; color: #854d0e; }
     .receipt-modal-content .status-dp { background-color: #e0f2fe; color: #0c4a6e; }
+
+    .laundry-banner {
+        position: relative;
+        overflow: hidden;
+        margin: 0 auto 1rem;
+        max-width: 64rem;
+        border-radius: 1.5rem;
+        background: linear-gradient(135deg, rgba(14,165,233,0.95), rgba(37,99,235,0.92) 45%, rgba(6,182,212,0.9));
+        box-shadow: 0 18px 45px rgba(37, 99, 235, 0.18);
+        color: white;
+        padding: 1.25rem 1.25rem 1.4rem;
+        border: 1px solid rgba(255,255,255,0.24);
+    }
+    .laundry-banner::before,
+    .laundry-banner::after {
+        content: "";
+        position: absolute;
+        border-radius: 9999px;
+        background: rgba(255,255,255,0.15);
+        filter: blur(1px);
+        pointer-events: none;
+    }
+    .laundry-banner::before { width: 180px; height: 180px; top: -70px; right: -40px; }
+    .laundry-banner::after { width: 120px; height: 120px; bottom: -40px; left: -20px; }
+    .laundry-banner-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .laundry-banner-copy h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0 0 0.3rem;
+        line-height: 1.15;
+        letter-spacing: 0.02em;
+    }
+    .laundry-banner-copy p {
+        margin: 0;
+        color: rgba(255,255,255,0.9);
+        max-width: 34rem;
+        font-size: 0.95rem;
+    }
+    .laundry-bubbles {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+    }
+    .bubble {
+        position: absolute;
+        border-radius: 9999px;
+        background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.85), rgba(255,255,255,0.18) 58%, rgba(255,255,255,0.08));
+        box-shadow: inset -8px -10px 16px rgba(255,255,255,0.08);
+        opacity: 0.8;
+        animation: bubbleFloat 10s ease-in-out infinite;
+    }
+    .bubble.b1 { width: 40px; height: 40px; top: 16px; left: 45%; animation-delay: 0s; }
+    .bubble.b2 { width: 24px; height: 24px; top: 22px; right: 26%; animation-delay: 1.2s; }
+    .bubble.b3 { width: 16px; height: 16px; bottom: 22px; left: 18%; animation-delay: 2s; }
+    .bubble.b4 { width: 28px; height: 28px; bottom: 18px; right: 10%; animation-delay: 0.8s; }
+    .bubble.b5 { width: 12px; height: 12px; top: 50%; left: 8%; animation-delay: 1.8s; }
+    @keyframes bubbleFloat {
+        0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
+        50% { transform: translateY(-10px) scale(1.08); opacity: 1; }
+    }
+
+    @keyframes pageBubbleFloat {
+        0%, 100% { transform: translateY(0) translateX(0) scale(1); opacity: 0.34; }
+        50% { transform: translateY(-18px) translateX(8px) scale(1.08); opacity: 0.56; }
+    }
+    .washer-hero {
+        position: relative;
+        z-index: 2;
+        width: 118px;
+        height: 118px;
+        flex: 0 0 auto;
+        border-radius: 1.6rem;
+        background: linear-gradient(145deg, rgba(255,255,255,0.96), rgba(224,242,254,0.9));
+        box-shadow: inset 0 2px 0 rgba(255,255,255,0.9), 0 12px 28px rgba(8,47,73,0.18);
+        padding: 14px;
+    }
+    .washer-top {
+        height: 18px;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, #dbeafe, #f8fafc);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        padding: 0 10px;
+    }
+    .washer-top span {
+        width: 8px;
+        height: 8px;
+        border-radius: 9999px;
+        background: #38bdf8;
+        box-shadow: 14px 0 0 #60a5fa;
+        display: inline-block;
+    }
+    .washer-door {
+        position: relative;
+        width: 100%;
+        height: 74px;
+        border-radius: 9999px;
+        border: 6px solid #bfdbfe;
+        background: radial-gradient(circle at 35% 30%, #e0f2fe 0%, #7dd3fc 26%, #1d4ed8 68%, #1e3a8a 100%);
+        overflow: hidden;
+    }
+    .washer-door::before,
+    .washer-door::after {
+        content: "";
+        position: absolute;
+        border-radius: 9999px;
+        background: rgba(255,255,255,0.3);
+    }
+    .washer-door::before { width: 58px; height: 58px; top: 6px; left: 12px; }
+    .washer-door::after { width: 16px; height: 16px; top: 12px; right: 16px; background: rgba(255,255,255,0.65); }
+    .washer-swirl {
+        position: absolute;
+        inset: 12px;
+        border-radius: 9999px;
+        border: 3px dashed rgba(255,255,255,0.5);
+        animation: spin 8s linear infinite;
+    }
+    @media (max-width: 640px) {
+        body::before { width: 110px; height: 110px; top: 10%; right: -2%; }
+        body::after { width: 68px; height: 68px; left: -1%; bottom: 18%; }
+        .page-bubbles .b1 { width: 42px; height: 42px; }
+        .page-bubbles .b4 { width: 30px; height: 30px; }
+    }
   </style>
 </head>
-<body class="bg-gray-100 p-4 text-base"> <!-- CHANGED: text-sm to text-base for better readability on tablets -->
+<body class="p-4 text-base"> <!-- CHANGED: text-sm to text-base for better readability on tablets -->
+
+  <div class="page-bubbles" aria-hidden="true">
+    <span class="bubble b1"></span>
+    <span class="bubble b2"></span>
+    <span class="bubble b3"></span>
+    <span class="bubble b4"></span>
+    <span class="bubble b5"></span>
+    <span class="bubble b6"></span>
+  </div>
 
   <!-- ### NEW ### Main container to hide content before login -->
   <div id="main-app-container" class="hidden">
@@ -202,6 +402,9 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </button>
         </div>
+        </div>
+    </div>
+            </div>
         </div>
     </div>
 
@@ -287,7 +490,7 @@
                         Unclaimed Orders
                     </button>
                     <button onclick="generateEndOfDayReport()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold shadow-sm">
-                        Generate End of Day Report
+                        End of Duty Laundry Audit
                     </button>
                 </div>
             </div>
@@ -2053,6 +2256,9 @@
             time: time,
             perfume: perfume, // NEW
             paymentTimestamp: paymentType !== 'collection' ? time : null,
+            lastStoreAuditDate: null,
+            lastStoreAuditedAt: null,
+            lastStoreAuditedBy: null,
             _searchableKeywords: [ name.toLowerCase(), phone, orNumber ]
         };
 
@@ -3120,30 +3326,196 @@
         });
     }
 
+    function getStoreAuditDayKey() {
+        return dayjs().tz(TIMEZONE).format('YYYY-MM-DD');
+    }
+
+    function isLaundryAuditedToday(tx, dayKey = getStoreAuditDayKey()) {
+        return !!tx && tx.lastStoreAuditDate === dayKey;
+    }
+
+    async function getSupervisorAuditName() {
+        const { value } = await Swal.fire({
+            title: 'Supervisor Name',
+            input: 'text',
+            inputPlaceholder: 'Enter your name',
+            inputValue: (await localforage.getItem('last_supervisor_audit_name')) || '',
+            showCancelButton: true,
+            confirmButtonText: 'Continue',
+            inputValidator: (value) => {
+                if (!value || !value.trim()) {
+                    return 'Supervisor name is required.';
+                }
+            }
+        });
+
+        if (!value) return null;
+        const trimmedValue = value.trim();
+        await localforage.setItem('last_supervisor_audit_name', trimmedValue);
+        return trimmedValue;
+    }
+
+    async function confirmLaundryChecked(orNumber) {
+        showLoading(true, `Confirming OR# ${orNumber}...`);
+        try {
+            const nowIso = dayjs().tz(TIMEZONE).toISOString();
+            const todayKey = getStoreAuditDayKey();
+
+            await db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).update({
+                lastStoreAuditDate: todayKey,
+                lastStoreAuditedAt: nowIso,
+                lastStoreAuditedBy: 'Checked'
+            });
+
+            showLoading(false);
+            Toast.fire({ icon: 'success', title: `OR# ${orNumber} confirmed in store.` });
+            generateEndOfDayReport();
+        } catch (error) {
+            console.error('Error confirming laundry audit:', error);
+            showLoading(false);
+            Swal.fire('Error', 'Failed to confirm this laundry item.', 'error');
+        }
+    }
+
+    async function confirmAllLaundry() {
+        showLoading(true, 'Confirming all remaining laundry...');
+        try {
+            const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
+                .where('balanceDue', '>', 0)
+                .get();
+
+            if (snapshot.empty) {
+                showLoading(false);
+                Toast.fire({ icon: 'info', title: 'No remaining laundry to confirm.' });
+                return;
+            }
+
+            const todayKey = getStoreAuditDayKey();
+            const nowIso = dayjs().tz(TIMEZONE).toISOString();
+            let batch = db.batch();
+            let operationCount = 0;
+            let updatedCount = 0;
+
+            for (const doc of snapshot.docs) {
+                const tx = doc.data();
+                if (tx.lastStoreAuditDate === todayKey) continue;
+
+                batch.update(doc.ref, {
+                    lastStoreAuditDate: todayKey,
+                    lastStoreAuditedAt: nowIso,
+                    lastStoreAuditedBy: 'Checked'
+                });
+                operationCount++;
+                updatedCount++;
+
+                if (operationCount >= 400) {
+                    await batch.commit();
+                    batch = db.batch();
+                    operationCount = 0;
+                }
+            }
+
+            if (operationCount > 0) {
+                await batch.commit();
+            }
+
+            showLoading(false);
+            Toast.fire({
+                icon: 'success',
+                title: updatedCount > 0
+                    ? `${updatedCount} remaining orders confirmed.`
+                    : 'All remaining orders are already confirmed today.'
+            });
+            generateEndOfDayReport();
+        } catch (error) {
+            console.error('Error confirming all laundry audits:', error);
+            showLoading(false);
+            Swal.fire('Error', 'Failed to confirm all remaining laundry.', 'error');
+        }
+    }
+
     async function generateEndOfDayReport() {
-        showLoading(true);
-        const totalCollectedToday = await getTotalCollectedToday();
+        showLoading(true, 'Generating laundry audit...');
 
-        const todayStart = dayjs().tz(TIMEZONE).startOf('day').toDate();
-        const todayEnd = dayjs().tz(TIMEZONE).endOf('day').toDate();
-        const todaySnapshot = await db.collection(COLLECTIONS.TRANSACTIONS).where('time', '>=', todayStart.toISOString()).where('time', '<=', todayEnd.toISOString()).get();
-        const totalSalesToday = todaySnapshot.docs.reduce((sum, doc) => sum + doc.data().total, 0);
+        try {
+            const todayDisplay = dayjs().tz(TIMEZONE).format('MMMM D, YYYY');
+            const todayKey = getStoreAuditDayKey();
 
-        const pendingSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS).where('balanceDue', '>', 0).get();
-        const forCollectionCount = pendingSnapshot.size;
-        const totalValueForCollection = pendingSnapshot.docs.reduce((sum, doc) => sum + doc.data().balanceDue, 0);
+            const remainingSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
+                .where('balanceDue', '>', 0)
+                .get();
 
-        const reportHtml = `
-            <div class="text-left space-y-3">
-                <p class="text-2xl font-bold">End of Day Report</p>
-                <p class="text-sm text-gray-500">${dayjs().tz(TIMEZONE).format('MMMM D, YYYY')}</p><hr>
-                <p class="flex justify-between"><span>Total Collected Revenue (Cash on Hand):</span> <span class="font-bold text-xl">₱${totalCollectedToday.toFixed(2)}</span></p>
-                <p class="flex justify-between"><span>Total Sales (Orders Created Today):</span> <span class="font-bold text-xl">₱${totalSalesToday.toFixed(2)}</span></p><hr>
-                <p class="flex justify-between"><span>Orders for Collection / Has Balance:</span> <span class="font-bold">${forCollectionCount} orders</span></p>
-                <p class="flex justify-between"><span>Outstanding Balance Total:</span> <span class="font-bold text-xl">₱${totalValueForCollection.toFixed(2)}</span></p>
-            </div>`;
-        showLoading(false);
-        Swal.fire({ title: 'Daily Summary', html: reportHtml, confirmButtonText: 'Great!' });
+            const remainingOrders = remainingSnapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+            const remainingHtml = remainingOrders.length === 0
+                ? `<div class="text-center py-8">
+                        <p class="text-green-600 font-bold text-lg">✔ No remaining laundry in store</p>
+                   </div>`
+                : remainingOrders.map(tx => {
+                    const checkedToday = isLaundryAuditedToday(tx, todayKey);
+                    const itemsSummary = Array.isArray(tx.cart) && tx.cart.length > 0
+                        ? tx.cart.map(item => item.label).join(', ')
+                        : 'No service details';
+                    const phoneDisplay = tx.phone ? tx.phone : 'No phone';
+                    const notesHtml = tx.notes ? `<p class="text-xs text-gray-500 mt-1"><strong>Notes:</strong> ${tx.notes}</p>` : '';
+                    const perfumeHtml = tx.perfume ? `<p class="text-xs text-pink-700 mt-1"><strong>Perfume:</strong> ${tx.perfume}</p>` : '';
+
+                    return `
+                        <div class="p-3 border rounded-lg mb-2 ${checkedToday ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <p class="font-semibold text-gray-800 break-words">${tx.name}</p>
+                                    <p class="text-xs text-gray-600 mt-1"><strong>OR#:</strong> ${tx.orNumber} &nbsp; | &nbsp; <strong>Phone:</strong> ${phoneDisplay}</p>
+                                    <p class="text-xs text-gray-600 mt-1"><strong>Items:</strong> ${itemsSummary}</p>
+                                    <p class="text-xs text-gray-500 mt-1"><strong>Drop-off:</strong> ${dayjs(tx.time).format('MMM DD, YYYY h:mm A')}</p>
+                                    ${notesHtml}
+                                    ${perfumeHtml}
+                                </div>
+                                <button
+                                    onclick="confirmLaundryChecked('${tx.orNumber}')"
+                                    class="px-3 py-1 rounded text-xs font-semibold whitespace-nowrap self-start ${checkedToday ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}"
+                                    ${checkedToday ? 'disabled' : ''}>
+                                    ${checkedToday ? '✔ Checked Today' : '✔ Check'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            const reportHtml = `
+                <div class="text-left space-y-4">
+                    <div>
+                        <p class="text-2xl font-bold">End of Duty Laundry Audit</p>
+                        <p class="text-sm text-gray-500">${todayDisplay}</p>
+                        <p class="text-xs text-gray-500 mt-1">Checked status resets automatically each new day.</p>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button onclick="confirmAllLaundry()" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-blue-700">
+                            ✔ Confirm All Remaining
+                        </button>
+                    </div>
+
+                    <div class="max-h-[28rem] overflow-y-auto pr-1">
+                        ${remainingHtml}
+                    </div>
+                </div>
+            `;
+
+            showLoading(false);
+            Swal.fire({
+                title: 'Supervisor Audit',
+                html: reportHtml,
+                width: '720px',
+                confirmButtonText: 'Close'
+            });
+        } catch (error) {
+            console.error('Error generating end of day report:', error);
+            showLoading(false);
+            Swal.fire('Error', 'Failed to generate the end of duty laundry audit.', 'error');
+        }
     }
 
     function toggleDailyReport() {
