@@ -1176,11 +1176,10 @@
         });
 
         db.collection(COLLECTIONS.TRANSACTIONS)
-          .where('balanceDue', '>', 0)
-          .onSnapshot(snapshot => {
+          .onSnapshot(() => {
             renderPickupView();
             renderPickupDashboard();
-        });
+          });
 
         const todayStart = dayjs().tz(TIMEZONE).startOf('day').toISOString();
         const todayEnd = dayjs().tz(TIMEZONE).endOf('day').toISOString();
@@ -1237,7 +1236,10 @@
                     batch.set(docRef, {
                         ...tx,
                         smsSent: tx.smsSent || false,
-                        dashboardFinished: (tx.paymentType === 'paid' && !shopSettings.smsEnabled) || false
+                        claimedAt: tx.claimedAt || null,
+                        claimedBy: tx.claimedBy || null,
+                        storeAuditLogs: tx.storeAuditLogs || [],
+                        dashboardFinished: tx.dashboardFinished || false
                     }, { merge: true });
                 });
             }
@@ -2184,7 +2186,7 @@
                         notes, perfume, // NEW
                         balanceDue: 0,
                         smsSent: false,
-                        dashboardFinished: !shopSettings.smsEnabled
+                        dashboardFinished: false
                     };
                     clearForm();
                     Toast.fire({ icon: 'success', title: 'GCash Order submitted!' });
@@ -2206,9 +2208,7 @@
                     amountPaid = amountPaidInput;
                     balanceDue = 0;
                     change = amountPaidInput - total;
-                    if (!shopSettings.smsEnabled) {
-                        dashboardFinished = true;
-                    }
+                    dashboardFinished = false;
                 } else if (paymentType === 'down_payment') {
                     const downPaymentAmountInput = await getAmountReceived(0.01, total, 'Down Payment Amount');
                     if (downPaymentAmountInput === null) return;
@@ -2256,6 +2256,9 @@
             time: time,
             perfume: perfume, // NEW
             paymentTimestamp: paymentType !== 'collection' ? time : null,
+            claimedAt: null,
+            claimedBy: null,
+            storeAuditLogs: [],
             lastStoreAuditDate: null,
             lastStoreAuditedAt: null,
             lastStoreAuditedBy: null,
@@ -2889,12 +2892,25 @@
         if (tx.dashboardFinished === undefined) tx.dashboardFinished = false;
 
         if (tx.paymentType === 'paid') {
-            statusTag = `Paid via ${(tx.paymentMethod || 'cash').toUpperCase()}`; statusTagColor = 'bg-green-200 text-green-800'; displayAmount = tx.total.toFixed(2);
+            if (isPrepaidAwaitingClaim(tx)) {
+                statusTag = `Fully Paid via ${(tx.paymentMethod || 'cash').toUpperCase()} - Waiting Claim`;
+                statusTagColor = 'bg-green-200 text-green-800';
+                displayAmount = tx.total.toFixed(2);
+                payButtonHtml = `<button onclick="confirmClaimedOrder('${tx.orNumber}')" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">Claim Order</button>`;
+            } else if (tx.claimedAt) {
+                statusTag = 'Claimed';
+                statusTagColor = 'bg-gray-200 text-gray-800';
+                displayAmount = tx.total.toFixed(2);
+            } else {
+                statusTag = `Paid via ${(tx.paymentMethod || 'cash').toUpperCase()}`;
+                statusTagColor = 'bg-green-200 text-green-800';
+                displayAmount = tx.total.toFixed(2);
+            }
         } else if (tx.paymentType === 'down_payment') {
             statusTag = 'Down Payment'; statusTagColor = 'bg-blue-200 text-blue-800';
             displayAmount = `${tx.amountPaid.toFixed(2)} (Bal: ${tx.balanceDue.toFixed(2)})`;
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.balanceDue}, 'balance_paid')" class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">Pay Balance</button>`;
-        } else { 
+        } else {
             statusTag = 'For Collection'; statusTagColor = 'bg-yellow-200 text-yellow-800';
             displayAmount = tx.balanceDue.toFixed(2);
             payButtonHtml = `<button onclick="markAsPaidAndGetAmount('${tx.orNumber}', ${tx.total}, 'paid')" class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">Mark as Paid</button>`;
@@ -2942,12 +2958,21 @@
             if (!currentDoc.exists) throw new Error(`Transaction ${orNumber} not found.`);
             const currentTransaction = currentDoc.data();
 
+            const paymentTimestamp = dayjs().tz(TIMEZONE).toISOString();
             const updatePayload = {
-                paymentTimestamp: dayjs().tz(TIMEZONE).toISOString(),
+                paymentTimestamp: paymentTimestamp,
                 balanceDue: 0,
                 paymentMethod: paymentMethod,
                 change: change,
-                dashboardFinished: !shopSettings.smsEnabled || currentTransaction.smsSent,
+                claimedAt: paymentTimestamp,
+                claimedBy: 'Paid + Claimed',
+                dashboardFinished: true,
+                storeAuditLogs: firebase.firestore.FieldValue.arrayUnion({
+                    type: 'paid_and_claimed',
+                    time: paymentTimestamp,
+                    by: 'System',
+                    note: `Order released after ${paymentMethod.toUpperCase()} payment.`
+                })
             };
 
             if (paymentTypeContext === 'paid') { // From 'For Collection' state
@@ -3057,18 +3082,15 @@
         container.innerHTML = '<div class="inline-loader"></div>';
         const searchTerm = allElements.pickupSearchInput.value.toLowerCase();
 
-        // UPDATED LOGIC: We now ONLY fetch orders that have a balance due.
-        // Orders that are fully paid will no longer be queried for this view.
-        const pendingOrdersSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
-                                              .where('balanceDue', '>', 0)
-                                              .get();
-        let allDashboardOrders = pendingOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+        const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS).get();
+        let allDashboardOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(tx => isRemainingInStore(tx));
 
         if (searchTerm) {
             allDashboardOrders = allDashboardOrders.filter(tx =>
-                tx.name.toLowerCase().includes(searchTerm) ||
+                (tx.name || '').toLowerCase().includes(searchTerm) ||
                 (tx.phone && tx.phone.toLowerCase().includes(searchTerm)) ||
-                tx.orNumber.toLowerCase().includes(searchTerm)
+                (tx.orNumber && tx.orNumber.toLowerCase().includes(searchTerm))
             );
         }
 
@@ -3079,20 +3101,51 @@
             if (searchTerm) {
                 messageHtml = `
                     <div class="text-center p-4 bg-white rounded-lg shadow-sm">
-                        <p class="text-gray-600 mb-3 font-semibold">No PENDING orders match your filter.</p>
-                        <button onclick="searchAllOrdersFromPickup('${searchTerm.replace(/'/g, "\\'")}')" class="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 shadow-sm font-semibold">
-                            Search All Historical Orders for "${searchTerm.replace(/'/g, "\\'")}"
+                        <p class="text-gray-600 mb-3 font-semibold">No active in-store orders match your filter.</p>
+                        <button onclick="searchAllOrdersFromPickup('${searchTerm.replace(/'/g, "\'")}')" class="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 shadow-sm font-semibold">
+                            Search All Historical Orders for "${searchTerm.replace(/'/g, "\'")}"
                         </button>
                     </div>
                 `;
             } else {
-                messageHtml = `<p class="text-center text-gray-500 p-4">No orders waiting for payment.</p>`;
+                messageHtml = `<p class="text-center text-gray-500 p-4">No remaining laundry in store.</p>`;
             }
             container.innerHTML = messageHtml;
             return;
         }
 
-        allDashboardOrders.sort((a, b) => new Date(a.time) - new Date(b.time)).forEach(tx => renderPickupCard(tx, container));
+        const paymentPendingOrders = allDashboardOrders
+            .filter(tx => (tx.balanceDue || 0) > 0)
+            .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+        const fullyPaidAwaitingClaimOrders = allDashboardOrders
+            .filter(tx => isPrepaidAwaitingClaim(tx))
+            .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+        const renderSectionTitle = (title, subtitle, colorClass) => {
+            const section = document.createElement('div');
+            section.className = `mt-4 mb-2 px-1`;
+            section.innerHTML = `
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                        <h3 class="text-lg font-bold ${colorClass}">${title}</h3>
+                        <p class="text-xs text-gray-500">${subtitle}</p>
+                    </div>
+                </div>
+            `;
+            container.appendChild(section);
+        };
+
+        if (paymentPendingOrders.length > 0) {
+            renderSectionTitle('Waiting for Payment', `${paymentPendingOrders.length} order(s) still need payment before release.`, 'text-yellow-700');
+            paymentPendingOrders.forEach(tx => renderPickupCard(tx, container));
+        }
+
+        if (fullyPaidAwaitingClaimOrders.length > 0) {
+            renderSectionTitle('Fully Paid - Waiting for Claim', `${fullyPaidAwaitingClaimOrders.length} prepaid order(s) are still inside the shop waiting to be claimed.`, 'text-green-700');
+            fullyPaidAwaitingClaimOrders.forEach(tx => renderPickupCard(tx, container));
+        }
+
         updateDashboardTubCleaningAlert();
     }
     // #################################################################
@@ -3107,34 +3160,46 @@
         return colors[Math.abs(hash % colors.length)];
     }
     
-    // ### MODIFIED ###: This function now has a "View Receipt" button and bold, colored names.
+    // ### MODIFIED ###: This function now supports prepaid claim workflow and a View Receipt button.
     function renderPickupCard(tx, container) {
-        if (tx.dashboardFinished) return;
-
-        const timeObj = dayjs(tx.time);
-        const displayTime = typeof timeObj.fromNow === 'function' ? `${timeObj.fromNow(true)} ago` : timeObj.format('MMM DD, YYYY');
         const balanceDue = tx.balanceDue === undefined ? Math.max(0, tx.total - (tx.amountPaid || 0)) : tx.balanceDue;
         const customerNameColor = getColorForText(tx.name);
+        const timeObj = dayjs(tx.time);
+        const displayTime = typeof timeObj.fromNow === 'function' ? `${timeObj.fromNow(true)} ago` : timeObj.format('MMM DD, YYYY');
 
         let cardConfig = {};
-        if (tx.paymentType === 'down_payment') {
+        if (tx.paymentType === 'down_payment' && balanceDue > 0) {
             cardConfig = {
                 bgColor: 'bg-blue-50 border-blue-200',
                 statusTag: 'Down Payment',
                 statusTagColor: 'bg-blue-200 text-blue-800',
-                totalDisplay: `₱${tx.amountPaid.toFixed(2)} (Bal: ₱${balanceDue.toFixed(2)})`,
+                totalDisplay: `₱${(tx.amountPaid || 0).toFixed(2)} (Bal: ₱${balanceDue.toFixed(2)})`,
                 buttonAction: () => markAsPaidAndGetAmount(tx.orNumber, balanceDue, 'balance_paid'),
-                buttonText: 'Pay Balance'
+                buttonText: 'Pay Balance',
+                buttonClass: 'bg-blue-500 hover:bg-blue-600'
             };
-        } else if (tx.paymentType === 'collection') {
+        } else if (tx.paymentType === 'collection' && balanceDue > 0) {
             cardConfig = {
                 bgColor: 'bg-yellow-50 border-yellow-200',
                 statusTag: 'For Collection',
                 statusTagColor: 'bg-yellow-200 text-yellow-800',
                 totalDisplay: `₱${balanceDue.toFixed(2)}`,
                 buttonAction: () => markAsPaidAndGetAmount(tx.orNumber, tx.total, 'paid'),
-                buttonText: 'Mark as Paid'
+                buttonText: 'Mark as Paid',
+                buttonClass: 'bg-blue-500 hover:bg-blue-600'
             };
+        } else if (isPrepaidAwaitingClaim(tx)) {
+            cardConfig = {
+                bgColor: 'bg-green-50 border-green-200',
+                statusTag: `Fully Paid via ${(tx.paymentMethod || 'cash').toUpperCase()}`,
+                statusTagColor: 'bg-green-200 text-green-800',
+                totalDisplay: `₱${tx.total.toFixed(2)}`,
+                buttonAction: () => confirmClaimedOrder(tx.orNumber),
+                buttonText: 'Claim Order',
+                buttonClass: 'bg-green-600 hover:bg-green-700'
+            };
+        } else {
+            return;
         }
 
         const card = document.createElement('div');
@@ -3145,9 +3210,10 @@
 
         const leftDiv = document.createElement('div');
         leftDiv.innerHTML = `
-            <div class="flex items-baseline gap-2">
+            <div class="flex items-baseline gap-2 flex-wrap">
                 <p class="font-bold text-lg">OR# ${tx.orNumber}</p>
                 <span class="text-xs font-medium px-2 py-0.5 rounded-full ${cardConfig.statusTagColor}">${cardConfig.statusTag}</span>
+                ${isLaundryAuditedToday(tx) ? '<span class="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Checked Today</span>' : ''}
             </div>
             <p class="text-xl"><strong class="font-extrabold ${customerNameColor}">${tx.name}</strong> <span class="font-normal text-gray-600 text-base">(${tx.phone || 'No Phone'})</span></p>
             <p class="text-sm text-gray-500">Dropped off: ${displayTime}</p>
@@ -3157,7 +3223,7 @@
 
         const rightDiv = document.createElement('div');
         rightDiv.className = 'flex flex-col items-start md:items-end';
-        
+
         const totalP = document.createElement('p');
         totalP.className = 'font-bold text-2xl mb-2';
         totalP.textContent = cardConfig.totalDisplay;
@@ -3165,11 +3231,11 @@
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'flex items-center gap-2 flex-wrap justify-end';
 
-        const payButton = document.createElement('button');
-        payButton.className = 'bg-blue-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-600';
-        payButton.textContent = cardConfig.buttonText;
-        payButton.onclick = cardConfig.buttonAction;
-        buttonContainer.appendChild(payButton);
+        const actionButton = document.createElement('button');
+        actionButton.className = `${cardConfig.buttonClass} text-white px-4 py-2 rounded text-sm font-semibold`;
+        actionButton.textContent = cardConfig.buttonText;
+        actionButton.onclick = cardConfig.buttonAction;
+        buttonContainer.appendChild(actionButton);
 
         const viewReceiptButton = document.createElement('button');
         viewReceiptButton.className = 'bg-gray-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-gray-600';
@@ -3177,14 +3243,14 @@
         viewReceiptButton.onclick = () => showReceiptModal(tx);
         buttonContainer.appendChild(viewReceiptButton);
 
-        if (shopSettings.smsEnabled && tx.phone) {
+        if (shopSettings.smsEnabled && tx.phone && (tx.paymentType === 'collection' || tx.paymentType === 'down_payment')) {
             const smsButton = document.createElement('button');
             smsButton.className = 'bg-purple-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-purple-600';
             smsButton.textContent = 'Send SMS';
             smsButton.onclick = () => sendPickupReadySms(tx.orNumber, tx.phone, tx.name);
             buttonContainer.appendChild(smsButton);
         }
-        
+
         rightDiv.appendChild(totalP);
         rightDiv.appendChild(buttonContainer);
 
@@ -3267,10 +3333,10 @@
     // ### NEW FUNCTION: To open a popup with details of unclaimed orders ###
     async function openUnclaimedOrdersPopup() {
         showLoading(true, 'Analyzing unclaimed orders...');
-        const pendingOrdersSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
-                                              .where('balanceDue', '>', 0)
-                                              .get();
-        const pendingOrders = pendingOrdersSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+        const pendingOrdersSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS).get();
+        const pendingOrders = pendingOrdersSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(tx => isRemainingInStore(tx));
 
         const now = dayjs().tz(TIMEZONE);
         const alerts15Days = [];
@@ -3334,6 +3400,74 @@
         return !!tx && tx.lastStoreAuditDate === dayKey;
     }
 
+    function isOrderClaimed(tx) {
+        return !!(tx && tx.claimedAt);
+    }
+
+    function isPrepaidAwaitingClaim(tx) {
+        return !!tx && !isOrderClaimed(tx) && tx.paymentType === 'paid' && !tx.balancePaidAmount;
+    }
+
+    function isRemainingInStore(tx) {
+        if (!tx || isOrderClaimed(tx)) return false;
+        const balanceDue = tx.balanceDue === undefined ? Math.max(0, (tx.total || 0) - (tx.amountPaid || 0)) : tx.balanceDue;
+        if (balanceDue > 0) return true;
+        return isPrepaidAwaitingClaim(tx);
+    }
+
+    function getTodayStoreAuditLogs(transactions, dayKey = getStoreAuditDayKey()) {
+        const logs = [];
+
+        transactions.forEach(tx => {
+            const txLogs = Array.isArray(tx.storeAuditLogs) ? tx.storeAuditLogs : [];
+            txLogs.forEach(log => {
+                const logDayKey = log && log.time ? dayjs(log.time).tz(TIMEZONE).format('YYYY-MM-DD') : null;
+                if (logDayKey === dayKey) {
+                    logs.push({ ...log, orNumber: tx.orNumber, customerName: tx.name });
+                }
+            });
+        });
+
+        return logs.sort((a, b) => new Date(b.time) - new Date(a.time));
+    }
+
+    async function confirmClaimedOrder(orNumber) {
+        const result = await Swal.fire({
+            title: 'Confirm Claim',
+            text: `Mark OR# ${orNumber} as claimed by customer?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#16a34a',
+            confirmButtonText: 'Yes, Mark Claimed'
+        });
+
+        if (!result.isConfirmed) return;
+
+        showLoading(true, `Claiming OR# ${orNumber}...`);
+        try {
+            const nowIso = dayjs().tz(TIMEZONE).toISOString();
+            await db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).update({
+                claimedAt: nowIso,
+                claimedBy: 'Claimed',
+                dashboardFinished: true,
+                storeAuditLogs: firebase.firestore.FieldValue.arrayUnion({
+                    type: 'claimed',
+                    time: nowIso,
+                    by: 'Staff',
+                    note: 'Customer claimed fully paid laundry.'
+                })
+            });
+
+            showLoading(false);
+            Toast.fire({ icon: 'success', title: `OR# ${orNumber} marked as claimed.` });
+            generateEndOfDayReport();
+        } catch (error) {
+            console.error('Error marking claimed order:', error);
+            showLoading(false);
+            Swal.fire('Error', 'Failed to mark this order as claimed.', 'error');
+        }
+    }
+
     async function getSupervisorAuditName() {
         const { value } = await Swal.fire({
             title: 'Supervisor Name',
@@ -3364,7 +3498,13 @@
             await db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).update({
                 lastStoreAuditDate: todayKey,
                 lastStoreAuditedAt: nowIso,
-                lastStoreAuditedBy: 'Checked'
+                lastStoreAuditedBy: 'Checked',
+                storeAuditLogs: firebase.firestore.FieldValue.arrayUnion({
+                    type: 'checked',
+                    time: nowIso,
+                    by: 'Staff',
+                    note: 'Order checked and confirmed inside the shop.'
+                })
             });
 
             showLoading(false);
@@ -3380,11 +3520,10 @@
     async function confirmAllLaundry() {
         showLoading(true, 'Confirming all remaining laundry...');
         try {
-            const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
-                .where('balanceDue', '>', 0)
-                .get();
+            const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS).get();
+            const remainingDocs = snapshot.docs.filter(doc => isRemainingInStore(doc.data()));
 
-            if (snapshot.empty) {
+            if (remainingDocs.length === 0) {
                 showLoading(false);
                 Toast.fire({ icon: 'info', title: 'No remaining laundry to confirm.' });
                 return;
@@ -3396,14 +3535,20 @@
             let operationCount = 0;
             let updatedCount = 0;
 
-            for (const doc of snapshot.docs) {
+            for (const doc of remainingDocs) {
                 const tx = doc.data();
                 if (tx.lastStoreAuditDate === todayKey) continue;
 
                 batch.update(doc.ref, {
                     lastStoreAuditDate: todayKey,
                     lastStoreAuditedAt: nowIso,
-                    lastStoreAuditedBy: 'Checked'
+                    lastStoreAuditedBy: 'Checked',
+                    storeAuditLogs: firebase.firestore.FieldValue.arrayUnion({
+                        type: 'checked',
+                        time: nowIso,
+                        by: 'Staff',
+                        note: 'Bulk check from End of Duty Laundry Audit.'
+                    })
                 });
                 operationCount++;
                 updatedCount++;
@@ -3441,13 +3586,18 @@
             const todayDisplay = dayjs().tz(TIMEZONE).format('MMMM D, YYYY');
             const todayKey = getStoreAuditDayKey();
 
-            const remainingSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
-                .where('balanceDue', '>', 0)
-                .get();
-
-            const remainingOrders = remainingSnapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
+            const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS).get();
+            const allTransactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const remainingOrders = allTransactions
+                .filter(tx => isRemainingInStore(tx))
                 .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+            const totalRemainingCount = remainingOrders.length;
+            const checkedTodayCount = remainingOrders.filter(tx => isLaundryAuditedToday(tx, todayKey)).length;
+            const notCheckedCount = Math.max(0, totalRemainingCount - checkedTodayCount);
+            const fullyPaidWaitingClaimCount = remainingOrders.filter(tx => isPrepaidAwaitingClaim(tx)).length;
+            const withBalanceCount = remainingOrders.filter(tx => (tx.balanceDue || 0) > 0).length;
+            const todayLogs = getTodayStoreAuditLogs(allTransactions, todayKey);
 
             const remainingHtml = remainingOrders.length === 0
                 ? `<div class="text-center py-8">
@@ -3461,6 +3611,9 @@
                     const phoneDisplay = tx.phone ? tx.phone : 'No phone';
                     const notesHtml = tx.notes ? `<p class="text-xs text-gray-500 mt-1"><strong>Notes:</strong> ${tx.notes}</p>` : '';
                     const perfumeHtml = tx.perfume ? `<p class="text-xs text-pink-700 mt-1"><strong>Perfume:</strong> ${tx.perfume}</p>` : '';
+                    const orderTypeHtml = isPrepaidAwaitingClaim(tx)
+                        ? `<p class="text-xs text-green-700 mt-1 font-semibold"><strong>Status:</strong> Fully paid, waiting claim</p>`
+                        : `<p class="text-xs text-yellow-700 mt-1 font-semibold"><strong>Status:</strong> With unpaid balance</p>`;
 
                     return `
                         <div class="p-3 border rounded-lg mb-2 ${checkedToday ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}">
@@ -3470,6 +3623,7 @@
                                     <p class="text-xs text-gray-600 mt-1"><strong>OR#:</strong> ${tx.orNumber} &nbsp; | &nbsp; <strong>Phone:</strong> ${phoneDisplay}</p>
                                     <p class="text-xs text-gray-600 mt-1"><strong>Items:</strong> ${itemsSummary}</p>
                                     <p class="text-xs text-gray-500 mt-1"><strong>Drop-off:</strong> ${dayjs(tx.time).format('MMM DD, YYYY h:mm A')}</p>
+                                    ${orderTypeHtml}
                                     ${notesHtml}
                                     ${perfumeHtml}
                                 </div>
@@ -3484,6 +3638,33 @@
                     `;
                 }).join('');
 
+            const logsHtml = todayLogs.length === 0
+                ? `<div class="text-sm text-gray-500 text-center py-4">No audit updates submitted today yet.</div>`
+                : todayLogs.map(log => {
+                    const actionLabel = log.type === 'claimed'
+                        ? 'Claimed'
+                        : log.type === 'paid_and_claimed'
+                            ? 'Paid + Claimed'
+                            : 'Checked in Store';
+                    const badgeClass = log.type === 'claimed'
+                        ? 'bg-green-100 text-green-800'
+                        : log.type === 'paid_and_claimed'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-emerald-100 text-emerald-800';
+                    return `
+                        <div class="p-2 border rounded-md bg-white flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-gray-800">OR# ${log.orNumber} - ${log.customerName}</p>
+                                <p class="text-xs text-gray-500 mt-1">${log.note || actionLabel}</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="text-[11px] font-semibold px-2 py-1 rounded-full ${badgeClass}">${actionLabel}</span>
+                                <p class="text-[11px] text-gray-500 mt-1">${dayjs(log.time).format('h:mm A')}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
             const reportHtml = `
                 <div class="text-left space-y-4">
                     <div>
@@ -3492,14 +3673,54 @@
                         <p class="text-xs text-gray-500 mt-1">Checked status resets automatically each new day.</p>
                     </div>
 
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="p-3 rounded-lg bg-slate-100 border border-slate-200 text-center">
+                            <p class="text-[11px] font-semibold text-slate-600">Total Remaining</p>
+                            <p class="text-xl font-bold text-slate-900 mt-1">${totalRemainingCount}</p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-green-100 border border-green-200 text-center">
+                            <p class="text-[11px] font-semibold text-green-700">Checked Today</p>
+                            <p class="text-xl font-bold text-green-900 mt-1">${checkedTodayCount}</p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-red-100 border border-red-200 text-center">
+                            <p class="text-[11px] font-semibold text-red-700">Remaining Not Checked</p>
+                            <p class="text-xl font-bold text-red-900 mt-1">${notCheckedCount}</p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-emerald-100 border border-emerald-200 text-center">
+                            <p class="text-[11px] font-semibold text-emerald-700">Fully Paid Waiting Claim</p>
+                            <p class="text-xl font-bold text-emerald-900 mt-1">${fullyPaidWaitingClaimCount}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-center">
+                            <p class="text-[11px] font-semibold text-yellow-700">With Balance</p>
+                            <p class="text-lg font-bold text-yellow-900 mt-1">${withBalanceCount}</p>
+                        </div>
+                        <div class="p-3 rounded-lg bg-blue-50 border border-blue-200 text-center">
+                            <p class="text-[11px] font-semibold text-blue-700">Today's Audit Logs</p>
+                            <p class="text-lg font-bold text-blue-900 mt-1">${todayLogs.length}</p>
+                        </div>
+                    </div>
+
                     <div class="flex justify-end">
                         <button onclick="confirmAllLaundry()" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-blue-700">
                             ✔ Confirm All Remaining
                         </button>
                     </div>
 
-                    <div class="max-h-[28rem] overflow-y-auto pr-1">
-                        ${remainingHtml}
+                    <div>
+                        <p class="text-sm font-bold text-gray-700 mb-2">Remaining Laundry List</p>
+                        <div class="max-h-[20rem] overflow-y-auto pr-1">
+                            ${remainingHtml}
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-sm font-bold text-gray-700 mb-2">Today's Check / Claim Logs</p>
+                        <div class="max-h-[12rem] overflow-y-auto pr-1 space-y-2 bg-gray-50 border rounded-lg p-2">
+                            ${logsHtml}
+                        </div>
                     </div>
                 </div>
             `;
@@ -3508,7 +3729,7 @@
             Swal.fire({
                 title: 'Supervisor Audit',
                 html: reportHtml,
-                width: '720px',
+                width: '760px',
                 confirmButtonText: 'Close'
             });
         } catch (error) {
@@ -3999,15 +4220,7 @@
                     if (updatedData.paymentType === 'paid') {
                         newBalanceDue = 0;
                         newChange = updatedData.amountPaid - updatedData.total;
-                        if (!shopSettings.smsEnabled) {
-                             dashboardFinished = true;
-                        } else {
-                            if (tx.smsSent) { 
-                                dashboardFinished = true;
-                            } else {
-                                dashboardFinished = false; 
-                            }
-                        }
+                        dashboardFinished = tx.claimedAt ? true : false;
                     } else if (updatedData.paymentType === 'down_payment') {
                         newBalanceDue = updatedData.total - updatedData.amountPaid;
                         newChange = 0; 
@@ -4035,6 +4248,8 @@
                         balanceDue: newBalanceDue,
                         change: newChange,
                         dashboardFinished: dashboardFinished,
+                        claimedAt: updatedData.paymentType === 'paid' ? (tx.balancePaidAmount ? tx.claimedAt : null) : null,
+                        claimedBy: updatedData.paymentType === 'paid' ? (tx.balancePaidAmount ? tx.claimedBy : null) : null,
                         smsSent: tx.smsSent,
                         _searchableKeywords: [updatedData.name.toLowerCase(), updatedData.phone, tx.orNumber].filter(Boolean)
                     };
@@ -4483,7 +4698,7 @@
                 
                 let updateData = { smsSent: true };
 
-                if (currentTx.paymentType === 'paid' && currentTx.balanceDue === 0) {
+                if (currentTx.paymentType === 'paid' && currentTx.balanceDue === 0 && currentTx.balancePaidAmount) {
                     updateData.dashboardFinished = true;
                 }
                 
