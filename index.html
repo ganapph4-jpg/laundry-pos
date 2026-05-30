@@ -4,6 +4,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#0891b2" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <title>MAMA'S LOVE LAUNDRY POS</title>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
@@ -1694,7 +1699,7 @@
                 const colorClass = serviceButtonColorClasses[s.color] || serviceButtonColorClasses.blue;
                 b.className = `${colorClass} p-3 rounded transition flex flex-col items-center justify-center`;
                 // ### CHANGE END ###
-                b.innerHTML = `<span class="font-semibold">${s.label}</span><span class="text-xs">₱${s.price}</span>`;
+                b.innerHTML = `<span class="font-bold text-sm">${s.label}</span><span class="text-xs font-semibold mt-1">₱${s.price}</span>`;
                 b.onclick = function() { addToCart(s.label, s.price, this); };
                 fC.appendChild(b);
             });
@@ -2171,7 +2176,7 @@
         const cE = document.getElementById('cart');
         cE.innerHTML = '';
         let t = 0;
-        cart.forEach((i, idx) => { t += i.price; const d = document.createElement('div'); d.className = 'flex justify-between items-center py-1 border-b'; d.innerHTML = `<span>${i.label}</span><div class="flex items-center"><span>₱${i.price.toFixed(2)}</span><button onclick="removeItem(${idx})" class="text-red-500 ml-2 font-bold">&times;</button></div>`; cE.appendChild(d); });
+        cart.forEach((i, idx) => { t += i.price; const d = document.createElement('div'); d.className = 'flex justify-between items-center py-2 border-b'; d.innerHTML = `<span class="font-bold text-base">${i.label}</span><div class="flex items-center gap-2"><span class="font-bold text-base">₱${i.price.toFixed(2)}</span><button onclick="removeItem(${idx})" class="text-red-600 hover:text-red-800 font-bold text-xl px-2">&times;</button></div>`; cE.appendChild(d); });
         allElements.totalEl.textContent = t.toFixed(2);
         // Sabon reminder
         const laundryCount = cart.filter(i => !/d'comfo|fabcon|sabon/i.test(i.label)).length;
@@ -5163,6 +5168,13 @@ async function handleLoadPromoCustomers() {
     
     // --- App Initializer ---
     document.addEventListener('DOMContentLoaded', promptStaffLogin);
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js');
+      });
+    }
   </script>
 </body>
 </html>
