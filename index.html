@@ -398,6 +398,7 @@
             <button onclick="showView('pickup-view')" id="to-pickup-btn" title="Manage Pickups" class="text-gray-600 hover:text-blue-600 p-2">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 3 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
             </button>
+
             <button onclick="openSettingsWithPassword()" title="Owner Settings" class="text-gray-600 hover:text-blue-600 p-2 ml-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </button>
@@ -425,18 +426,15 @@
             <input id="phone" type="text" placeholder="Phone Number (Optional)" class="border p-2 w-full mb-2" />
             <div id="customer-search-results" class="absolute left-0 right-0 z-10 bg-white border rounded-md shadow-lg hidden max-h-48 overflow-y-auto"></div>
         </div>
-        <label class="block font-semibold">Payment Type:</label>
-        <select id="paymentType" class="border p-2 w-full mb-2">
-            <option value="collection">For Collection</option>
-            <option value="paid">Fully Paid (Cash)</option>
-            <option value="down_payment">Down Payment (Cash)</option> <!-- NEW: Down Payment Option -->
-            <option value="gcash">GCash (Fully Paid)</option> <!-- ### NEW ### GCash PAYMENT OPTION -->
+        <label class="block font-bold">Payment Type:</label>
+        <select id="paymentType" class="border p-2 w-full mb-2 font-bold">
+            <option value="collection" class="font-bold">For Collection</option>
+            <option value="paid" class="font-bold">Fully Paid (Cash)</option>
+            <option value="down_payment" class="font-bold">Down Payment (Cash)</option> <!-- NEW: Down Payment Option -->
+            <option value="gcash" class="font-bold">GCash (Fully Paid)</option> <!-- ### NEW ### GCash PAYMENT OPTION -->
         </select>
         
         <!-- ### REMOVED ### Perfume Selection Dropdown removed -->
-
-        <!-- ADDED: Optional Notes Field -->
-        <input id="orderNotes" type="text" placeholder="Optional Notes (e.g., Makapal, Handle with care)" class="border p-2 w-full mb-2" />
 
         <div id="service-buttons-container" class="mt-4">
             <div id="service-loader" class="inline-loader"></div>
@@ -489,7 +487,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         Unclaimed Orders
                     </button>
-                    <button onclick="generateEndOfDayReport()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold shadow-sm">
+                    <button onclick="showView('audit-view')" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-bold shadow-sm">
                         End of Duty Laundry Audit
                     </button>
                 </div>
@@ -500,8 +498,8 @@
                     <p id="pickup-dashboard-sales" class="text-2xl font-bold text-green-900 mt-1">₱0.00</p>
                 </div>
                 <div class="bg-yellow-100 p-4 rounded-lg border border-yellow-200 text-center">
-                    <p class="text-sm font-medium text-yellow-800">For Collection</p> <!-- Changed from "For Collection (Count)" -->
-                    <p id="pickup-dashboard-for-collection" class="text-2xl font-bold text-yellow-900 mt-1">0</p> <!-- Changed ID -->
+                    <p class="text-sm font-medium text-yellow-800">For Collection</p>
+                    <p id="pickup-dashboard-for-collection" class="text-2xl font-bold text-yellow-900 mt-1">0</p>
                 </div>
                 <div class="bg-red-100 p-4 rounded-lg border border-red-200 text-center">
                     <p class="text-sm font-medium text-red-800">Total Sales (Today)</p>
@@ -524,6 +522,18 @@
                     <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
             </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="openWaitingPaymentPopup()" id="btn-waiting-payment" class="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 font-bold shadow-sm flex items-center gap-2 w-full">
+                    <span>⏳</span>
+                    <span class="text-sm whitespace-nowrap">Waiting for Payment</span>
+                    <span id="count-waiting-payment" class="text-lg ml-auto">0</span>
+                </button>
+                <button onclick="openWaitingClaimPopup()" id="btn-waiting-claim" class="bg-sky-500 text-white px-4 py-2 rounded hover:bg-sky-600 font-bold shadow-sm flex items-center gap-2 w-full">
+                    <span>✅</span>
+                    <span class="text-sm whitespace-nowrap">Fully Paid</span>
+                    <span id="count-waiting-claim" class="text-lg ml-auto">0</span>
+                </button>
+            </div>
             <div id="pending-list-container" class="space-y-3"></div>
         </div>
     </div>
@@ -545,6 +555,23 @@
         </div>
         <div id="perfume-list-container" class="space-y-6">
             <!-- Perfume lists will be generated here by JavaScript -->
+        </div>
+    </div>
+
+    <!-- AUDIT VIEW -->
+    <div id="audit-view" class="main-view max-w-4xl mx-auto">
+        <div class="mb-6">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 class="text-2xl font-bold">End of Duty Laundry Audit</h2>
+                    <p id="audit-date-display" class="text-sm text-gray-500"></p>
+                    <p class="text-xs text-gray-500 mt-1">Checked status resets automatically each new day.</p>
+                </div>
+                <button onclick="showView('pickup-view')" class="text-gray-500 hover:text-red-600 text-3xl leading-none p-2">&times;</button>
+            </div>
+        </div>
+        <div id="audit-container" class="space-y-4">
+            <div class="text-center py-8 text-gray-500">Loading audit report...</div>
         </div>
     </div>
 
@@ -696,6 +723,30 @@
                     <button onclick="savePerfumeSettings()" class="bg-pink-600 text-white px-4 py-2 rounded mt-4 w-full hover:bg-pink-700">Save Perfume Settings</button>
                 </div>
 
+
+                <!-- ### NEW ### Loyalty Points Settings -->
+                <div class="p-4 border rounded border-amber-300 bg-amber-50">
+                    <h3 class="text-lg font-semibold mb-3 text-amber-800">Loyalty Points Program</h3>
+
+                    <div class="flex items-center justify-between mb-4">
+                        <label for="settingLoyaltyEnabled" class="font-medium">Enable Loyalty Points</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="settingLoyaltyEnabled" onchange="toggleLoyaltySettings()" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                        </label>
+                    </div>
+
+                    <div id="loyalty-config-details" class="space-y-3">
+                        <p class="text-sm text-gray-600 mb-3">Customers earn loyalty points on paid orders. Points are displayed on receipts and tracked per customer.</p>
+                        <div>
+                            <label for="settingLoyaltyEarnDivisor" class="block font-medium">Earn Rate (₱ per point)</label>
+                            <input id="settingLoyaltyEarnDivisor" type="number" min="1" step="1" class="border p-2 w-full mt-1">
+                            <p class="text-xs text-gray-500 mt-1">e.g., 10 means 1 point per ₱10 spent</p>
+                        </div>
+                    </div>
+
+                    <button onclick="saveLoyaltySettings()" class="bg-amber-600 text-white px-4 py-2 rounded mt-4 w-full hover:bg-amber-700">Save Loyalty Settings</button>
+                </div>
 
                 <!-- ### MODIFIED SMS Settings Section ### -->
                 <div class="p-4 border rounded border-purple-300 bg-purple-50">
@@ -877,6 +928,7 @@
         posView: document.getElementById('pos-view'), toPosBtn: document.getElementById('to-pos-btn'), findOrderSection: document.getElementById('find-order-section'),
         pickupView: document.getElementById('pickup-view'), toPickupBtn: document.getElementById('to-pickup-btn'),
         perfumeView: document.getElementById('perfume-view'), toPerfumeBtn: document.getElementById('to-perfume-btn'), // NEW
+        auditView: document.getElementById('audit-view'),
         customerSearchResults: document.getElementById('customer-search-results'),
         headerTitle: document.getElementById('header-title'),
         pendingListContainer: document.getElementById('pending-list-container'),
@@ -904,6 +956,10 @@
         perfumeConfigDetails: document.getElementById('perfume-config-details'),
         perfumeDateFilter: document.getElementById('perfume-date-filter'),
         perfumeSearchFilter: document.getElementById('perfume-search-filter'),
+        // Loyalty elements
+        settingLoyaltyEnabled: document.getElementById('settingLoyaltyEnabled'),
+        loyaltyConfigDetails: document.getElementById('loyalty-config-details'),
+        settingLoyaltyEarnDivisor: document.getElementById('settingLoyaltyEarnDivisor'),
         // UPDATED Tub Cleaning Elements (only interval remains global in UI)
         tubCleaningIntervalDays: document.getElementById('tubCleaningIntervalDays'),
         tubCleaningDashboardAlert: document.getElementById('tub-cleaning-dashboard-alert'),
@@ -916,6 +972,8 @@
         allElements.loadingIndicatorText.textContent = text;
         allElements.loadingIndicator.style.display = show ? 'flex' : 'none';
     }
+
+    function esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 
     // This function is now only a helper for paper printing
     function preparePaperReceipt(tx) {
@@ -967,6 +1025,9 @@
             summaryHtml += `<div>${'TOTAL COLLECTED'.padEnd(itemWidth)}${`₱${(tx.amountPaid).toFixed(2)}`.padStart(priceWidth)}</div>`;
         }
         summaryHtml += `<div class="font-bold">Payment Status: ${paymentStatusDisplay}</div>`;
+        if (tx.pointsEarned > 0) {
+            summaryHtml += `<div>${'Points Earned'.padEnd(itemWidth)}${String(tx.pointsEarned).padStart(priceWidth)}</div>`;
+        }
         if (tx.notes) {
           summaryHtml += `<div class="font-bold">Notes: ${tx.notes}</div>`;
         }
@@ -1007,6 +1068,13 @@
             allElements.toPosBtn.classList.remove('hidden');
             allElements.toPickupBtn.classList.remove('hidden');
             renderPerfumeView(); // Render the content when view is shown
+        } else if (viewId === 'audit-view') {
+            allElements.toPosBtn.classList.remove('hidden');
+            allElements.toPickupBtn.classList.remove('hidden');
+            if (shopSettings.perfumeFeatureEnabled) {
+                allElements.toPerfumeBtn.classList.remove('hidden');
+            }
+            renderAuditView();
         }
     }
 
@@ -1095,7 +1163,10 @@
                 smsPickupMessageTemplate: "Hi [Customer Name], your Mama's Love Laundry order #[OR Number] is now ready for pickup! Thank you from [Shop Name].",
                 // NEW Perfume Defaults
                 perfumeFeatureEnabled: false,
-                perfumeOptions: ['Mystique', 'Passion', 'Comfort']
+                perfumeOptions: ['Mystique', 'Passion', 'Comfort'],
+                // NEW Loyalty Points Defaults
+                loyaltyEnabled: false,
+                loyaltyEarnDivisor: 10 // 1 point per ₱10 spent
             };
             if (doc.exists) {
                 shopSettings = { ...defaultSettings, ...doc.data() };
@@ -1107,6 +1178,7 @@
             renderSmsSettings();
             renderPerfumeSettings(); // NEW
             togglePerfumeFeatureUI(); // NEW
+            renderLoyaltySettings(); // NEW
             renderPickupDashboard();
         });
 
@@ -1290,6 +1362,18 @@
         const totalSalesToday = todaySnapshot.docs.reduce((sum, doc) => sum + doc.data().total, 0);
         allElements.pickupDashboardTotalSales.textContent = `₱${totalSalesToday.toFixed(2)}`;
 
+        const allOrdersSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS).get();
+        const allOrders = allOrdersSnapshot.docs.map(d => d.data());
+
+        const waitingForPaymentCount = allOrders.filter(tx => {
+            const balDue = tx.balanceDue === undefined ? Math.max(0, (tx.total || 0) - (tx.amountPaid || 0)) : tx.balanceDue;
+            return !tx.claimedAt && balDue > 0;
+        }).length;
+        const waitingForClaimCount = allOrders.filter(tx => isPrepaidAwaitingClaim(tx)).length;
+
+        document.getElementById('count-waiting-payment').textContent = waitingForPaymentCount;
+        document.getElementById('count-waiting-claim').textContent = waitingForClaimCount;
+
         const pendingSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS).where('balanceDue', '>', 0).get();
         const forCollectionCount = pendingSnapshot.size;
         const totalValueForCollection = pendingSnapshot.docs.reduce((sum, doc) => sum + doc.data().balanceDue, 0);
@@ -1326,6 +1410,39 @@
         return collectedSum;
     }
 
+    async function openWaitingPaymentPopup() {
+        const g1 = document.getElementById('group-waiting-payment');
+        const g2 = document.getElementById('group-waiting-claim');
+        const s1 = document.getElementById('section-waiting-payment');
+        const s2 = document.getElementById('section-waiting-claim');
+        if (!g1) return;
+        const isActive = g1.classList.contains('filter-active');
+        document.querySelectorAll('.filter-active').forEach(el => el.classList.remove('filter-active'));
+        document.querySelectorAll('.section-filter-group').forEach(el => el.classList.remove('hidden'));
+        [s1, s2].forEach(el => { if (el) el.classList.remove('hidden'); });
+        if (!isActive) {
+            if (g2) { g2.classList.add('hidden', 'section-filter-group'); }
+            if (s2) { s2.classList.add('hidden', 'section-filter-group'); }
+            g1.classList.add('filter-active');
+        }
+    }
+
+    async function openWaitingClaimPopup() {
+        const g1 = document.getElementById('group-waiting-payment');
+        const g2 = document.getElementById('group-waiting-claim');
+        const s1 = document.getElementById('section-waiting-payment');
+        const s2 = document.getElementById('section-waiting-claim');
+        if (!g2) return;
+        const isActive = g2.classList.contains('filter-active');
+        document.querySelectorAll('.filter-active').forEach(el => el.classList.remove('filter-active'));
+        document.querySelectorAll('.section-filter-group').forEach(el => el.classList.remove('hidden'));
+        [s1, s2].forEach(el => { if (el) el.classList.remove('hidden'); });
+        if (!isActive) {
+            if (g1) { g1.classList.add('hidden', 'section-filter-group'); }
+            if (s1) { s1.classList.add('hidden', 'section-filter-group'); }
+            g2.classList.add('filter-active');
+        }
+    }
 
     function closeSettingsPanel() { allElements.settingsPanel.classList.remove('open'); }
 
@@ -1525,6 +1642,30 @@
         }
     }
 
+    function toggleLoyaltySettings() {
+        const isEnabled = allElements.settingLoyaltyEnabled.checked;
+        allElements.loyaltyConfigDetails.style.display = isEnabled ? 'block' : 'none';
+    }
+
+    function renderLoyaltySettings() {
+        allElements.settingLoyaltyEnabled.checked = shopSettings.loyaltyEnabled || false;
+        allElements.loyaltyConfigDetails.style.display = shopSettings.loyaltyEnabled ? 'block' : 'none';
+        allElements.settingLoyaltyEarnDivisor.value = shopSettings.loyaltyEarnDivisor || 10;
+    }
+
+    async function saveLoyaltySettings() {
+        const isEnabled = allElements.settingLoyaltyEnabled.checked;
+        const earnDivisor = parseInt(allElements.settingLoyaltyEarnDivisor.value) || 10;
+        if (isEnabled && earnDivisor < 1) {
+            return Swal.fire('Invalid', 'Earn rate must be at least 1.', 'error');
+        }
+        await db.collection(COLLECTIONS.CONFIG).doc('shopSettings').update({
+            loyaltyEnabled: isEnabled,
+            loyaltyEarnDivisor: earnDivisor
+        });
+        Toast.fire({ icon: 'success', title: 'Loyalty settings saved!' });
+    }
+
     // ### CHANGE START ### Added color mapping for service buttons
     const serviceButtonColorClasses = {
         blue: 'bg-blue-500 hover:bg-blue-600 text-white',
@@ -1722,58 +1863,28 @@
         const intervalDays = machineConfig.tubCleaning.intervalDays;
         const alerts = [];
 
-        if (!intervalDays || intervalDays <= 0) {
-            alerts.push('Global cleaning interval not configured or invalid. Please set it in Owner Settings > Machines.');
-        }
+        if (!intervalDays || intervalDays <= 0) return;
 
         machineStatus.filter(m => m.type === 'Washer').forEach(washer => {
-            if (!washer.lastTubCleaned) {
-                alerts.push(`Washer ${washer.id} tub cleaning date is not set.`);
-                return;
-            }
-
+            if (!washer.lastTubCleaned) return;
             const lastCleaned = dayjs(washer.lastTubCleaned).tz(TIMEZONE).startOf('day');
-
-            if (!lastCleaned.isValid()) {
-                console.error(`Invalid lastTubCleaned date for ${washer.id}:`, washer.lastTubCleaned);
-                return;
-            }
+            if (!lastCleaned.isValid()) return;
 
             const nextCleaningDate = lastCleaned.add(intervalDays, 'day');
-            const daysSinceLastCleaned = today.diff(lastCleaned, 'day');
-
-            if (today.isSame(nextCleaningDate, 'day')) {
-                alerts.push(`Washer ${washer.id}: Due TODAY! (last cleaned ${daysSinceLastCleaned} days ago)`);
-            } else if (today.isAfter(nextCleaningDate, 'day')) {
+            if (today.isAfter(nextCleaningDate, 'day')) {
                 const daysOverdue = today.diff(nextCleaningDate, 'day');
-                alerts.push(`Washer ${washer.id}: OVERDUE by ${daysOverdue} days! (last cleaned ${daysSinceLastCleaned} days ago)`);
+                alerts.push(`Washer ${washer.id}: OVERDUE by ${daysOverdue} days!`);
             }
         });
 
         if (alerts.length > 0) {
-            let htmlMessage = '<div class="text-left space-y-2">';
-            alerts.forEach(alert => {
-                htmlMessage += `<p>${alert}</p>`;
-            });
-            htmlMessage += `<p class="mt-4 text-sm font-semibold text-blue-700">Please go to Owner Settings > Machines to update the cleaning date for each washer.</p>`; // New instruction
-            htmlMessage += '</div>';
-
             await Swal.fire({
-                title: '🧼 Tub Cleaning Reminders',
-                html: htmlMessage,
+                title: '🧼 Tub Cleaning Overdue',
+                html: `<div class="text-left space-y-2">${alerts.map(a => `<p>${a}</p>`).join('')}</div>`,
                 icon: 'warning',
                 confirmButtonText: 'Understood',
-                // Removed showCancelButton and cancelButtonText as per new workflow
-                showClass: {
-                    popup: 'swal2-noanimation', // Disable enter animation
-                    backdrop: 'swal2-noanimation' // Disable backdrop animation
-                },
-                hideClass: {
-                    popup: '', // Disable exit animation
-                    backdrop: '' // Disable backdrop animation
-                },
                 allowOutsideClick: false,
-                allowEscapeKey: false,
+                allowEscapeKey: false
             });
         }
     }
@@ -1781,62 +1892,30 @@
     // UPDATED FUNCTION: Updates the tub cleaning alert on the dashboard
     function updateDashboardTubCleaningAlert() {
         const alertDiv = allElements.tubCleaningDashboardAlert;
-        alertDiv.classList.add('hidden'); // Hide by default
+        alertDiv.classList.add('hidden');
 
         const today = dayjs().tz(TIMEZONE).startOf('day');
         const intervalDays = machineConfig.tubCleaning.intervalDays;
-        const criticalAlerts = []; // Store alerts that are due today or overdue
+        const overdueAlerts = [];
 
-        if (!intervalDays || intervalDays <= 0) {
-            alertDiv.textContent = 'Global cleaning interval not configured. Check Owner Settings.';
-            alertDiv.className = 'mt-4 p-3 rounded-lg text-center font-semibold border bg-gray-100 text-gray-700';
-            alertDiv.classList.remove('hidden');
-            return;
-        }
+        if (!intervalDays || intervalDays <= 0) return;
 
         machineStatus.filter(m => m.type === 'Washer').forEach(washer => {
-            if (!washer.lastTubCleaned) {
-                criticalAlerts.push(`Washer ${washer.id} cleaning date not set.`);
-                return;
-            }
-
+            if (!washer.lastTubCleaned) return;
             const lastCleaned = dayjs(washer.lastTubCleaned).tz(TIMEZONE).startOf('day');
-            if (!lastCleaned.isValid()) {
-                // Log error but don't stop the whole dashboard
-                console.error(`Invalid lastTubCleaned date for ${washer.id}:`, washer.lastTubCleaned);
-                return;
-            }
+            if (!lastCleaned.isValid()) return;
 
             const nextCleaningDate = lastCleaned.add(intervalDays, 'day');
-            const daysOverdue = today.diff(nextCleaningDate, 'day'); // positive if overdue, 0 if due today
+            const daysOverdue = today.diff(nextCleaningDate, 'day');
 
-            if (daysOverdue > 0) { // Overdue
-                criticalAlerts.push(`Washer ${washer.id} OVERDUE by ${daysOverdue} days.`);
-            } else if (daysOverdue === 0) { // Due today
-                criticalAlerts.push(`Washer ${washer.id} due TODAY.`);
+            if (daysOverdue > 0) {
+                overdueAlerts.push(`Washer ${washer.id} OVERDUE by ${daysOverdue} days.`);
             }
         });
 
-        if (criticalAlerts.length > 0) {
-            let message = '';
-            let bgColor = '';
-            let textColor = '';
-            let borderColor = '';
-
-            if (criticalAlerts.some(alert => alert.includes('OVERDUE'))) {
-                message = `⚠️ Tub Cleaning OVERDUE: ${criticalAlerts.filter(a => a.includes('OVERDUE')).join(' ')}`;
-                bgColor = 'bg-red-100';
-                textColor = 'text-red-800';
-                borderColor = 'border-red-200';
-            } else {
-                message = `🔔 Tub Cleaning Due: ${criticalAlerts.join(' ')}`;
-                bgColor = 'bg-yellow-100';
-                textColor = 'text-yellow-800';
-                borderColor = 'border-yellow-200';
-            }
-
-            alertDiv.innerHTML = message;
-            alertDiv.className = `mt-4 p-3 rounded-lg text-center font-semibold border ${bgColor} ${textColor} ${borderColor}`;
+        if (overdueAlerts.length > 0) {
+            alertDiv.innerHTML = `⚠️ Tub Cleaning OVERDUE: ${overdueAlerts.join(' ')}`;
+            alertDiv.className = 'mt-4 p-3 rounded-lg text-center font-semibold border bg-red-100 text-red-800 border-red-200';
             alertDiv.classList.remove('hidden');
         } else {
             alertDiv.classList.add('hidden'); // Ensure it's hidden if no critical alerts
@@ -2094,6 +2173,16 @@
         let t = 0;
         cart.forEach((i, idx) => { t += i.price; const d = document.createElement('div'); d.className = 'flex justify-between items-center py-1 border-b'; d.innerHTML = `<span>${i.label}</span><div class="flex items-center"><span>₱${i.price.toFixed(2)}</span><button onclick="removeItem(${idx})" class="text-red-500 ml-2 font-bold">&times;</button></div>`; cE.appendChild(d); });
         allElements.totalEl.textContent = t.toFixed(2);
+        // Sabon reminder
+        const laundryCount = cart.filter(i => !/d'comfo|fabcon|sabon/i.test(i.label)).length;
+        const sabonCount = cart.filter(i => /d'comfo|fabcon|sabon/i.test(i.label)).length;
+        const missingSabonCount = Math.max(0, laundryCount - sabonCount);
+        if (missingSabonCount > 0 && cart.length > 0) {
+            const r = document.createElement('div');
+            r.className = 'mt-2 p-2 bg-yellow-50 border border-yellow-300 rounded text-sm text-yellow-800';
+            r.innerHTML = `<span class="font-bold">&#9888; Sabon Reminder:</span> Add <strong>${missingSabonCount}</strong> D'COMFO/ FABCON (₱15) item(s).`;
+            cE.appendChild(r);
+        }
     }
     function removeItem(index) { 
         cart.splice(index, 1); 
@@ -2103,7 +2192,6 @@
     function clearForm() {
         allElements.nameEl.value = '';
         allElements.phoneEl.value = '';
-        document.getElementById('orderNotes').value = '';
         cart = [];
         renderCart();
         allElements.paymentTypeEl.value = 'collection';
@@ -2119,7 +2207,6 @@
         const name = allElements.nameEl.value.trim();
         const phone = allElements.phoneEl.value.trim().replace(/\D/g, '');
         const paymentType = allElements.paymentTypeEl.value;
-        const notes = document.getElementById('orderNotes').value.trim();
         const perfume = getPerfumeFromCart(cart); // UPDATED LOGIC
         const total = cart.reduce((s, i) => s + i.price, 0);
 
@@ -2127,7 +2214,13 @@
             return Swal.fire('Incomplete Form', 'Customer Name and at least one item are required.', 'warning');
         }
 
-        let cH = `<div class="text-left space-y-2 my-4"><p><strong>Customer:</strong> ${name} (${phone || 'N/A'})</p>${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}${perfume ? `<p><strong>Perfume:</strong> ${perfume}</p>` : ''}<hr class="my-2"><ul class="space-y-1">${cart.map(i => `<li class="flex justify-between"><span>${i.label}</span><span>₱${i.price.toFixed(2)}</span></li>`).join('')}</ul><hr class="my-2"><p class="flex justify-between font-bold text-lg"><span>Total:</span><span>₱${total.toFixed(2)}</span></p></div>`;
+        if (!bluetoothWriteCharacteristic) {
+            try {
+                await connectBluetoothPrinter();
+            } catch { }
+        }
+
+        let cH = `<div class="text-left space-y-2 my-4"><p><strong>Customer:</strong> ${esc(name)} (${esc(phone) || 'N/A'})</p>${perfume ? `<p><strong>Perfume:</strong> ${esc(perfume)}</p>` : ''}<hr class="my-2"><ul class="space-y-1">${cart.map(i => `<li class="flex justify-between"><span>${esc(i.label)}</span><span>₱${i.price.toFixed(2)}</span></li>`).join('')}</ul><hr class="my-2"><p class="flex justify-between font-bold text-lg"><span>Total:</span><span>₱${total.toFixed(2)}</span></p></div>`;
 
         const r = await Swal.fire({
             title: 'Confirm Order Details',
@@ -2139,6 +2232,15 @@
         });
 
         if (r.isConfirmed) {
+            // Auto-add sabon if missing
+            const laundryCount = cart.filter(i => !/d'comfo|fabcon|sabon/i.test(i.label)).length;
+            const sabonCount = cart.filter(i => /d'comfo|fabcon|sabon/i.test(i.label)).length;
+            const missingSabonCount = Math.max(0, laundryCount - sabonCount);
+            for (let s = 0; s < missingSabonCount; s++) {
+                cart.push({ label: "D'COMFO/ FABCON", price: 15 });
+            }
+            const sabonAdded = missingSabonCount > 0;
+            const total = cart.reduce((s, i) => s + i.price, 0);
             if (paymentType === 'gcash') {
                 if (!shopSettings.gcashQrUrl) {
                     return Swal.fire('Not Configured', 'GCash QR Link is not set. The shop owner must configure it in Owner Settings > Shop Config.', 'error');
@@ -2183,7 +2285,7 @@
                         paymentMethod: 'gcash', // Specific method
                         amountPaid: total, // For gcash, amount paid is always the total
                         change: 0,
-                        notes, perfume, // NEW
+                        perfume, // NEW
                         balanceDue: 0,
                         smsSent: false,
                         dashboardFinished: false
@@ -2220,7 +2322,7 @@
                 const orderData = {
                     name, phone, cart: [...cart], total, paymentType,
                     paymentMethod: 'cash',
-                    amountPaid, change, notes, perfume, // NEW
+                    amountPaid, change, perfume, // NEW
                     balanceDue, smsSent: false,
                     dashboardFinished: dashboardFinished
                 };
@@ -2238,7 +2340,7 @@
 
 
     async function processAndSaveOrder(orderData) {
-        const { name, phone, cart, total, paymentType, paymentMethod, amountPaid, notes, balanceDue, change, smsSent, dashboardFinished, perfume } = orderData; // Added perfume
+        const { name, phone, cart, total, paymentType, paymentMethod, amountPaid, balanceDue, change, smsSent, dashboardFinished, perfume } = orderData; // Added perfume
 
         const time = dayjs().tz(TIMEZONE).toISOString();
         const orCounterRef = db.collection(COLLECTIONS.CONFIG).doc('orCounter');
@@ -2249,6 +2351,10 @@
             transaction.set(orCounterRef, { value: newOrValue });
             return String(newOrValue).padStart(6, '0');
         });
+
+        const pointsEarned = (shopSettings.loyaltyEnabled && paymentType !== 'collection')
+            ? Math.floor((amountPaid || 0) / (shopSettings.loyaltyEarnDivisor || 10))
+            : 0;
 
         const finalTransactionData = {
             ...orderData,
@@ -2262,6 +2368,8 @@
             lastStoreAuditDate: null,
             lastStoreAuditedAt: null,
             lastStoreAuditedBy: null,
+            pointsEarned: pointsEarned,
+            pointsAwarded: false,
             _searchableKeywords: [ name.toLowerCase(), phone, orNumber ]
         };
 
@@ -2289,8 +2397,12 @@
         }
 
         await batch.commit();
-        // ### MODIFIED ###: Show the new modal instead of the old receipt page
-        showReceiptModal(finalTransactionData);
+        if (bluetoothWriteCharacteristic) {
+            Toast.fire({ icon: 'success', title: `Order #${orNumber} saved! Printing...` });
+            printBluetoothReceipt(finalTransactionData);
+        } else {
+            Toast.fire({ icon: 'success', title: `Order #${orNumber} submitted successfully!` });
+        }
     }
 
     async function saveBluetoothSettings() {
@@ -2727,6 +2839,7 @@
                 <div class="summary-row"><span>TOTAL:</span><span>₱${tx.total.toFixed(2)}</span></div>
                 ${summaryHtml}
                 <div class="payment-status ${paymentStatusClass}">${paymentStatusDisplay}</div>
+                ${tx.pointsEarned > 0 ? `<div class="summary-row"><span>Points Earned:</span><span>${tx.pointsEarned}</span></div>` : ''}
                 ${tx.notes ? `<hr><div><strong>Notes:</strong> ${tx.notes}</div>` : ''}
                 ${qrCodeHtml}
             </div>
@@ -3122,9 +3235,10 @@
             .filter(tx => isPrepaidAwaitingClaim(tx))
             .sort((a, b) => new Date(a.time) - new Date(b.time));
 
-        const renderSectionTitle = (title, subtitle, colorClass) => {
+        const renderSectionTitle = (title, subtitle, colorClass, sectionId) => {
             const section = document.createElement('div');
-            section.className = `mt-4 mb-2 px-1`;
+            section.id = sectionId || '';
+            section.className = `mt-4 mb-2 px-1 scroll-mt-4`;
             section.innerHTML = `
                 <div class="flex items-center justify-between gap-3 flex-wrap">
                     <div>
@@ -3137,13 +3251,21 @@
         };
 
         if (paymentPendingOrders.length > 0) {
-            renderSectionTitle('Waiting for Payment', `${paymentPendingOrders.length} order(s) still need payment before release.`, 'text-yellow-700');
-            paymentPendingOrders.forEach(tx => renderPickupCard(tx, container));
+            renderSectionTitle('Waiting for Payment', `${paymentPendingOrders.length} order(s) still need payment before release.`, 'text-yellow-700', 'section-waiting-payment');
+            const group1 = document.createElement('div');
+            group1.id = 'group-waiting-payment';
+            group1.className = 'space-y-3';
+            paymentPendingOrders.forEach(tx => renderPickupCard(tx, group1));
+            container.appendChild(group1);
         }
 
         if (fullyPaidAwaitingClaimOrders.length > 0) {
-            renderSectionTitle('Fully Paid - Waiting for Claim', `${fullyPaidAwaitingClaimOrders.length} prepaid order(s) are still inside the shop waiting to be claimed.`, 'text-green-700');
-            fullyPaidAwaitingClaimOrders.forEach(tx => renderPickupCard(tx, container));
+            renderSectionTitle('Fully Paid - Waiting for Claim', `${fullyPaidAwaitingClaimOrders.length} prepaid order(s) are still inside the shop waiting to be claimed.`, 'text-green-700', 'section-waiting-claim');
+            const group2 = document.createElement('div');
+            group2.id = 'group-waiting-claim';
+            group2.className = 'space-y-3';
+            fullyPaidAwaitingClaimOrders.forEach(tx => renderPickupCard(tx, group2));
+            container.appendChild(group2);
         }
 
         updateDashboardTubCleaningAlert();
@@ -3218,6 +3340,7 @@
             <p class="text-xl"><strong class="font-extrabold ${customerNameColor}">${tx.name}</strong> <span class="font-normal text-gray-600 text-base">(${tx.phone || 'No Phone'})</span></p>
             <p class="text-sm text-gray-500">Dropped off: ${displayTime}</p>
             ${tx.perfume ? `<p class="mt-1 text-sm font-semibold text-pink-700">Perfume: ${tx.perfume}</p>` : ''}
+            ${tx.pointsEarned > 0 ? `<p class="mt-1 text-xs text-amber-700 font-semibold">Points Earned: ${tx.pointsEarned}</p>` : ''}
             ${tx.notes ? `<p class="mt-2 text-sm italic text-gray-700"><strong>Notes:</strong> ${tx.notes}</p>` : ''}
         `;
 
@@ -3460,12 +3583,29 @@
 
             showLoading(false);
             Toast.fire({ icon: 'success', title: `OR# ${orNumber} marked as claimed.` });
-            generateEndOfDayReport();
+            // Award loyalty points if applicable
+            const claimedTx = (await db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).get()).data();
+            if (claimedTx && claimedTx.pointsEarned > 0 && !claimedTx.pointsAwarded) {
+                addLoyaltyPointsToCustomer(claimedTx.phone, claimedTx.pointsEarned).then(() => {
+                    db.collection(COLLECTIONS.TRANSACTIONS).doc(orNumber).update({ pointsAwarded: true }).catch(() => {});
+                }).catch(() => {});
+            }
+            renderAuditView();
         } catch (error) {
             console.error('Error marking claimed order:', error);
             showLoading(false);
             Swal.fire('Error', 'Failed to mark this order as claimed.', 'error');
         }
+    }
+
+    async function addLoyaltyPointsToCustomer(phone, points) {
+        if (!phone || points <= 0) return;
+        const customerRef = db.collection(COLLECTIONS.CUSTOMERS).doc(phone);
+        await db.runTransaction(async t => {
+            const doc = await t.get(customerRef);
+            const currentPoints = doc.exists ? (doc.data().loyaltyPoints || 0) : 0;
+            t.set(customerRef, { loyaltyPoints: currentPoints + points }, { merge: true });
+        });
     }
 
     async function getSupervisorAuditName() {
@@ -3509,7 +3649,7 @@
 
             showLoading(false);
             Toast.fire({ icon: 'success', title: `OR# ${orNumber} confirmed in store.` });
-            generateEndOfDayReport();
+            renderAuditView();
         } catch (error) {
             console.error('Error confirming laundry audit:', error);
             showLoading(false);
@@ -3517,73 +3657,125 @@
         }
     }
 
-    async function confirmAllLaundry() {
-        showLoading(true, 'Confirming all remaining laundry...');
-        try {
-            const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS).get();
-            const remainingDocs = snapshot.docs.filter(doc => isRemainingInStore(doc.data()));
+    function showCustomerList(title, customers) {
+        if (!customers || customers.length === 0) {
+            return Swal.fire(title, 'No customers in this category.', 'info');
+        }
+        const list = customers.map(c => `<div class="p-1 border-b border-gray-100 text-sm">OR# ${c.or} - ${c.name}</div>`).join('');
+        Swal.fire({
+            title: title + ` (${customers.length})`,
+            html: `<div class="text-left max-h-80 overflow-y-auto">${list}</div>`,
+            width: '450px',
+            confirmButtonText: 'Close'
+        });
+    }
 
-            if (remainingDocs.length === 0) {
-                showLoading(false);
-                Toast.fire({ icon: 'info', title: 'No remaining laundry to confirm.' });
-                return;
-            }
+    function toggleAuditLogs() {
+        const container = document.getElementById('audit-logs-container');
+        const icon = document.getElementById('btn-toggle-logs-icon');
+        if (!container) return;
+        const isHidden = container.classList.contains('hidden');
+        container.classList.toggle('hidden');
+        if (icon) icon.innerHTML = isHidden ? '&#9660;' : '&#9654;';
+    }
 
-            const todayKey = getStoreAuditDayKey();
-            const nowIso = dayjs().tz(TIMEZONE).toISOString();
-            let batch = db.batch();
-            let operationCount = 0;
-            let updatedCount = 0;
+    async function showAuditLogsByDate() {
+        showLoading(true, 'Loading daily audit logs...');
+        const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS).get();
+        const allTx = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const remainingOrders = allTx.filter(tx => isRemainingInStore(tx));
+        showLoading(false);
 
-            for (const doc of remainingDocs) {
-                const tx = doc.data();
-                if (tx.lastStoreAuditDate === todayKey) continue;
+        const dayGroups = {};
+        allTx.forEach(tx => {
+            const dayStr = dayjs(tx.time).tz(TIMEZONE).format('YYYY-MM-DD');
+            if (!dayGroups[dayStr]) dayGroups[dayStr] = { orders: 0, checked: 0, notChecked: 0 };
+            dayGroups[dayStr].orders++;
+        });
 
-                batch.update(doc.ref, {
-                    lastStoreAuditDate: todayKey,
-                    lastStoreAuditedAt: nowIso,
-                    lastStoreAuditedBy: 'Checked',
-                    storeAuditLogs: firebase.firestore.FieldValue.arrayUnion({
-                        type: 'checked',
-                        time: nowIso,
-                        by: 'Staff',
-                        note: 'Bulk check from End of Duty Laundry Audit.'
-                    })
-                });
-                operationCount++;
-                updatedCount++;
+        const todayKey = getStoreAuditDayKey();
+        const todayDisplay = dayjs().tz(TIMEZONE).format('YYYY-MM-DD');
+        const sortedDays = Object.keys(dayGroups).sort().reverse();
 
-                if (operationCount >= 400) {
-                    await batch.commit();
-                    batch = db.batch();
-                    operationCount = 0;
-                }
-            }
+        sortedDays.forEach(dayStr => {
+            dayGroups[dayStr].checked = remainingOrders.filter(tx => tx.lastStoreAuditDate === dayStr).length;
+            dayGroups[dayStr].notChecked = remainingOrders.filter(tx => tx.lastStoreAuditDate !== dayStr).length;
+        });
 
-            if (operationCount > 0) {
-                await batch.commit();
-            }
+        const html = `
+            <div class="text-left">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 border-b-2 border-gray-300">
+                                <th class="p-2 text-left font-bold">Date</th>
+                                <th class="p-2 text-center font-bold">Orders</th>
+                                <th class="p-2 text-center font-bold">Checked Today</th>
+                                <th class="p-2 text-center font-bold">Not Checked</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sortedDays.map(dayStr => {
+                                const dg = dayGroups[dayStr];
+                                return `
+                                    <tr class="border-b border-gray-200 hover:bg-blue-50 cursor-pointer" onclick="toggleDayDetail('${dayStr}', this)">
+                                        <td class="p-2 font-semibold">${dayStr === todayKey ? `Today (${todayDisplay})` : dayjs(dayStr).format('MMM DD')}</td>
+                                        <td class="p-2 text-center">${dg.orders}</td>
+                                        <td class="p-2 text-center text-green-700 font-semibold">${dg.checked}</td>
+                                        <td class="p-2 text-center text-red-700 font-semibold">${dg.notChecked}</td>
+                                    </tr>
+                                    <tr class="hidden day-detail-row">
+                                        <td colspan="4" class="p-3 bg-gray-50">
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <p class="text-xs font-semibold text-green-700 mb-1">✅ Checked</p>
+                                                    <div class="max-h-32 overflow-y-auto space-y-1">
+                                                        ${remainingOrders.filter(tx => tx.lastStoreAuditDate === dayStr).length === 0 ? '<p class="text-xs text-gray-400">None</p>' :
+                                                            remainingOrders.filter(tx => tx.lastStoreAuditDate === dayStr).map(tx => `<p class="text-xs text-gray-700">OR# ${tx.orNumber} - ${tx.name}</p>`).join('')}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <p class="text-xs font-semibold text-red-700 mb-1">❌ Not Checked</p>
+                                                    <div class="max-h-32 overflow-y-auto space-y-1">
+                                                        ${remainingOrders.filter(tx => tx.lastStoreAuditDate !== dayStr).length === 0 ? '<p class="text-xs text-gray-400">None</p>' :
+                                                            remainingOrders.filter(tx => tx.lastStoreAuditDate !== dayStr).map(tx => `<p class="text-xs text-gray-700">OR# ${tx.orNumber} - ${tx.name}</p>`).join('')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
 
-            showLoading(false);
-            Toast.fire({
-                icon: 'success',
-                title: updatedCount > 0
-                    ? `${updatedCount} remaining orders confirmed.`
-                    : 'All remaining orders are already confirmed today.'
-            });
-            generateEndOfDayReport();
-        } catch (error) {
-            console.error('Error confirming all laundry audits:', error);
-            showLoading(false);
-            Swal.fire('Error', 'Failed to confirm all remaining laundry.', 'error');
+        Swal.fire({
+            title: 'Daily Audit Logs',
+            html: html,
+            width: '800px',
+            showCloseButton: true,
+            confirmButtonText: 'Close'
+        });
+    }
+
+    function toggleDayDetail(dayStr, rowEl) {
+        const nextRow = rowEl.nextElementSibling;
+        if (nextRow && nextRow.classList.contains('day-detail-row')) {
+            nextRow.classList.toggle('hidden');
         }
     }
 
-    async function generateEndOfDayReport() {
-        showLoading(true, 'Generating laundry audit...');
+    async function renderAuditView() {
+        const container = document.getElementById('audit-container');
+        if (!container) return;
+        container.innerHTML = '<div class="text-center py-8 text-gray-500">Loading...</div>';
 
         try {
             const todayDisplay = dayjs().tz(TIMEZONE).format('MMMM D, YYYY');
+            document.getElementById('audit-date-display').textContent = todayDisplay;
             const todayKey = getStoreAuditDayKey();
 
             const snapshot = await db.collection(COLLECTIONS.TRANSACTIONS).get();
@@ -3667,75 +3859,55 @@
 
             const reportHtml = `
                 <div class="text-left space-y-4">
-                    <div>
-                        <p class="text-2xl font-bold">End of Duty Laundry Audit</p>
-                        <p class="text-sm text-gray-500">${todayDisplay}</p>
-                        <p class="text-xs text-gray-500 mt-1">Checked status resets automatically each new day.</p>
-                    </div>
-
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div class="p-3 rounded-lg bg-slate-100 border border-slate-200 text-center">
+                        <button onclick="showCustomerList('Total Remaining', remainingOrders.map(tx => ({or: tx.orNumber, name: tx.name})))" class="p-3 rounded-lg bg-slate-100 border border-slate-200 text-center hover:bg-slate-200 transition cursor-pointer">
                             <p class="text-[11px] font-semibold text-slate-600">Total Remaining</p>
                             <p class="text-xl font-bold text-slate-900 mt-1">${totalRemainingCount}</p>
-                        </div>
-                        <div class="p-3 rounded-lg bg-green-100 border border-green-200 text-center">
+                        </button>
+                        <button onclick="showCustomerList('Checked Today', remainingOrders.filter(tx => isLaundryAuditedToday(tx, todayKey)).map(tx => ({or: tx.orNumber, name: tx.name})))" class="p-3 rounded-lg bg-green-100 border border-green-200 text-center hover:bg-green-200 transition cursor-pointer">
                             <p class="text-[11px] font-semibold text-green-700">Checked Today</p>
                             <p class="text-xl font-bold text-green-900 mt-1">${checkedTodayCount}</p>
-                        </div>
-                        <div class="p-3 rounded-lg bg-red-100 border border-red-200 text-center">
-                            <p class="text-[11px] font-semibold text-red-700">Remaining Not Checked</p>
+                        </button>
+                        <button onclick="showCustomerList('Not Checked Today', remainingOrders.filter(tx => !isLaundryAuditedToday(tx, todayKey)).map(tx => ({or: tx.orNumber, name: tx.name})))" class="p-3 rounded-lg bg-red-100 border border-red-200 text-center hover:bg-red-200 transition cursor-pointer">
+                            <p class="text-[11px] font-semibold text-red-700">Not Checked Today</p>
                             <p class="text-xl font-bold text-red-900 mt-1">${notCheckedCount}</p>
-                        </div>
-                        <div class="p-3 rounded-lg bg-emerald-100 border border-emerald-200 text-center">
+                        </button>
+                        <button onclick="showCustomerList('Fully Paid Waiting Claim', remainingOrders.filter(tx => isPrepaidAwaitingClaim(tx)).map(tx => ({or: tx.orNumber, name: tx.name})))" class="p-3 rounded-lg bg-emerald-100 border border-emerald-200 text-center hover:bg-emerald-200 transition cursor-pointer">
                             <p class="text-[11px] font-semibold text-emerald-700">Fully Paid Waiting Claim</p>
                             <p class="text-xl font-bold text-emerald-900 mt-1">${fullyPaidWaitingClaimCount}</p>
-                        </div>
+                        </button>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-center">
-                            <p class="text-[11px] font-semibold text-yellow-700">With Balance</p>
-                            <p class="text-lg font-bold text-yellow-900 mt-1">${withBalanceCount}</p>
-                        </div>
-                        <div class="p-3 rounded-lg bg-blue-50 border border-blue-200 text-center">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <button onclick="showAuditLogsByDate()" class="p-3 rounded-lg bg-blue-50 border border-blue-200 text-center hover:bg-blue-100 transition cursor-pointer">
                             <p class="text-[11px] font-semibold text-blue-700">Today's Audit Logs</p>
                             <p class="text-lg font-bold text-blue-900 mt-1">${todayLogs.length}</p>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end">
-                        <button onclick="confirmAllLaundry()" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-blue-700">
-                            ✔ Confirm All Remaining
                         </button>
+                        <button onclick="toggleAuditLogs()" class="p-3 rounded-lg bg-purple-50 border border-purple-200 text-center hover:bg-purple-100 transition cursor-pointer">
+                            <p class="text-[11px] font-semibold text-purple-700">Check / Claim Logs</p>
+                            <p class="text-lg font-bold text-purple-900 mt-1">${todayLogs.length}</p>
+                        </button>
+                    </div>
+                    <div id="audit-logs-container" class="hidden space-y-2 bg-gray-50 border rounded-lg p-3 relative">
+                        <button onclick="toggleAuditLogs()" class="absolute top-1 right-1 text-gray-500 hover:text-red-600 text-xl leading-none">&times;</button>
+                        <p class="text-sm font-bold text-gray-700 mb-2">Today's Check / Claim Logs</p>
+                        ${logsHtml}
                     </div>
 
                     <div>
                         <p class="text-sm font-bold text-gray-700 mb-2">Remaining Laundry List</p>
-                        <div class="max-h-[20rem] overflow-y-auto pr-1">
+                        <div class="pr-1">
                             ${remainingHtml}
                         </div>
                     </div>
 
-                    <div>
-                        <p class="text-sm font-bold text-gray-700 mb-2">Today's Check / Claim Logs</p>
-                        <div class="max-h-[12rem] overflow-y-auto pr-1 space-y-2 bg-gray-50 border rounded-lg p-2">
-                            ${logsHtml}
-                        </div>
-                    </div>
                 </div>
             `;
 
-            showLoading(false);
-            Swal.fire({
-                title: 'Supervisor Audit',
-                html: reportHtml,
-                width: '760px',
-                confirmButtonText: 'Close'
-            });
+            container.innerHTML = reportHtml;
         } catch (error) {
             console.error('Error generating end of day report:', error);
-            showLoading(false);
-            Swal.fire('Error', 'Failed to generate the end of duty laundry audit.', 'error');
+            container.innerHTML = '<div class="text-center py-8 text-red-600 font-bold">Failed to load audit report.</div>';
         }
     }
 
