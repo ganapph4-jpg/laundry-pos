@@ -2217,7 +2217,10 @@
         if (!bluetoothWriteCharacteristic) {
             try {
                 await connectBluetoothPrinter();
-            } catch { }
+            } catch { return; }
+            if (!bluetoothWriteCharacteristic) return;
+            // Brief settling time to ensure printer is fully ready
+            await new Promise(r => setTimeout(r, 1500));
         }
 
         let cH = `<div class="text-left space-y-2 my-4"><p><strong>Customer:</strong> ${esc(name)} (${esc(phone) || 'N/A'})</p>${perfume ? `<p><strong>Perfume:</strong> ${esc(perfume)}</p>` : ''}<hr class="my-2"><ul class="space-y-1">${cart.map(i => `<li class="flex justify-between"><span>${esc(i.label)}</span><span>₱${i.price.toFixed(2)}</span></li>`).join('')}</ul><hr class="my-2"><p class="flex justify-between font-bold text-lg"><span>Total:</span><span>₱${total.toFixed(2)}</span></p></div>`;
