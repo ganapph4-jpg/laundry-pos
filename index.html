@@ -2272,8 +2272,8 @@
         let t = 0;
         cart.forEach((i, idx) => { t += i.price; const d = document.createElement('div'); d.className = 'flex justify-between items-center py-2 border-b'; d.innerHTML = `<span class="font-bold text-base">${i.label}</span><div class="flex items-center gap-2"><span class="font-bold text-base">₱${i.price.toFixed(2)}</span><button onclick="removeItem(${idx})" class="text-red-600 hover:text-red-800 font-bold text-xl px-2">&times;</button></div>`; cE.appendChild(d); });
         allElements.totalEl.textContent = t.toFixed(2);
-        // Sabon reminder - excludes only Rush and Clean Balahibo
-        const eligibleForSabon = i => !/rush|balahibo/i.test(i.label);
+        // Sabon reminder - excludes Rush, Clean Balahibo, and sabon/fabcon items themselves
+        const eligibleForSabon = i => !/rush|balahibo/i.test(i.label) && !/d'comfo|fabcon|sabon/i.test(i.label);
         const isSabonOrFabcon = i => /d'comfo|fabcon|sabon/i.test(i.label);
         const eligibleCount = cart.filter(eligibleForSabon).length;
         const sabonCount = cart.filter(isSabonOrFabcon).length;
@@ -2343,8 +2343,8 @@
         });
 
         if (r.isConfirmed) {
-            // Auto-add sabon if missing - excludes only Rush and Clean Balahibo
-            const eligibleForSabon = i => !/rush|balahibo/i.test(i.label);
+            // Auto-add sabon if missing - excludes Rush, Clean Balahibo, and sabon/fabcon items themselves
+            const eligibleForSabon = i => !/rush|balahibo/i.test(i.label) && !/d'comfo|fabcon|sabon/i.test(i.label);
             const isSabonOrFabcon = i => /d'comfo|fabcon|sabon/i.test(i.label);
             const eligibleCount = cart.filter(eligibleForSabon).length;
             const sabonCount = cart.filter(isSabonOrFabcon).length;
