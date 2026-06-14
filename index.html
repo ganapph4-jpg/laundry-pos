@@ -2272,10 +2272,12 @@
         let t = 0;
         cart.forEach((i, idx) => { t += i.price; const d = document.createElement('div'); d.className = 'flex justify-between items-center py-2 border-b'; d.innerHTML = `<span class="font-bold text-base">${i.label}</span><div class="flex items-center gap-2"><span class="font-bold text-base">₱${i.price.toFixed(2)}</span><button onclick="removeItem(${idx})" class="text-red-600 hover:text-red-800 font-bold text-xl px-2">&times;</button></div>`; cE.appendChild(d); });
         allElements.totalEl.textContent = t.toFixed(2);
-        // Sabon reminder
-        const laundryCount = cart.filter(i => !/d'comfo|fabcon|sabon/i.test(i.label)).length;
-        const sabonCount = cart.filter(i => /d'comfo|fabcon|sabon/i.test(i.label)).length;
-        const missingSabonCount = Math.max(0, laundryCount - sabonCount);
+        // Sabon reminder - excludes only Rush and Clean Balahibo
+        const eligibleForSabon = i => !/rush|balahibo/i.test(i.label);
+        const isSabonOrFabcon = i => /d'comfo|fabcon|sabon/i.test(i.label);
+        const eligibleCount = cart.filter(eligibleForSabon).length;
+        const sabonCount = cart.filter(isSabonOrFabcon).length;
+        const missingSabonCount = Math.max(0, eligibleCount - sabonCount);
         if (missingSabonCount > 0 && cart.length > 0) {
             const r = document.createElement('div');
             r.className = 'mt-2 p-2 bg-yellow-50 border border-yellow-300 rounded text-sm text-yellow-800';
@@ -2341,10 +2343,12 @@
         });
 
         if (r.isConfirmed) {
-            // Auto-add sabon if missing
-            const laundryCount = cart.filter(i => !/d'comfo|fabcon|sabon/i.test(i.label)).length;
-            const sabonCount = cart.filter(i => /d'comfo|fabcon|sabon/i.test(i.label)).length;
-            const missingSabonCount = Math.max(0, laundryCount - sabonCount);
+            // Auto-add sabon if missing - excludes only Rush and Clean Balahibo
+            const eligibleForSabon = i => !/rush|balahibo/i.test(i.label);
+            const isSabonOrFabcon = i => /d'comfo|fabcon|sabon/i.test(i.label);
+            const eligibleCount = cart.filter(eligibleForSabon).length;
+            const sabonCount = cart.filter(isSabonOrFabcon).length;
+            const missingSabonCount = Math.max(0, eligibleCount - sabonCount);
             for (let s = 0; s < missingSabonCount; s++) {
                 cart.push({ label: "D'COMFO/ FABCON", price: 15 });
             }
@@ -3186,13 +3190,11 @@
                 if (doc.exists) {
                     transactionDocs.push(doc);
                 }
-            } 
-            
-            // Priority 2: If it's not a full OR number, perform a broader search on recent items.
-            if (transactionDocs.length === 0) {
+            } else {
+                // Priority 2: Only search broadly if it's NOT a 6-digit OR number.
                 const recentSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
                                              .orderBy('time', 'desc')
-                                             .limit(200) // Broaden the search pool for partial matches
+                                             .limit(200)
                                              .get();
                 transactionDocs = recentSnapshot.docs;
             }
@@ -3200,7 +3202,7 @@
             let allResults = transactionDocs.map(doc => ({ id: doc.id, ...doc.data() }));
             let matches = [];
             
-            // If it was a full OR number, the result is the only match.
+            // If it was a full OR number, the result is the only match (or empty).
             if (/^\d{6}$/.test(term)) {
                 matches = allResults;
             } else {
