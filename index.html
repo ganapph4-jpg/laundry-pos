@@ -4678,7 +4678,7 @@
                                     ${shopServices.map(s => `<option value="${s.id}" data-price="${s.price}" data-type="${s.type}">${s.label} (₱${s.price}${s.type === 'per_kg' ? '/kg' : ''})</option>`).join('')}
                                 </select>
                                 <input type="number" id="edit-add-service-weight" placeholder="kg (if per-kg)" class="border p-2 w-24">
-                                <button onclick="addEditedCartItem()" class="bg-green-500 text-white px-3 py-1 rounded text-sm">Add</button>
+                                <button onclick="addEditedCartItem('${orNumber}')" class="bg-green-500 text-white px-3 py-1 rounded text-sm">Add</button>
                             </div>
                         </div>
 
@@ -4887,7 +4887,7 @@
         }
     }
 
-    function addEditedCartItem() {
+    function addEditedCartItem(orNumber) {
         const select = document.getElementById('edit-add-service-select');
         const selectedOption = select.options[select.selectedIndex];
         const serviceId = selectedOption.value;
