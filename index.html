@@ -14,12 +14,12 @@
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/timezone.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/isBetween.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/fromNow.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/relativeTime.js"></script>
   <script>
     dayjs.extend(dayjs_plugin_utc);
     dayjs.extend(dayjs_plugin_timezone);
     dayjs.extend(dayjs_plugin_isBetween);
-    dayjs.extend(dayjs_plugin_fromNow);
+    dayjs.extend(dayjs_plugin_relativeTime);
   </script>
   <script src="https://cdn.jsdelivr.net/npm/localforage/dist/localforage.min.js"></script>
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -1116,9 +1116,40 @@
     }
 
 
+    // Resolve the staff password without ever blocking the login popup:
+    // try Firestore (with a timeout), then any password cached from an earlier
+    // successful read, then the default. This keeps the popup opening even when
+    // the device is offline or Firestore is slow/unreachable.
+    let cachedStaffPassword = null;
+    async function getStaffPassword() {
+        try {
+            const passwordDoc = await Promise.race([
+                db.collection(COLLECTIONS.CONFIG).doc('staffPassword').get(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore read timed out')), 8000))
+            ]);
+            if (passwordDoc.exists) {
+                const val = passwordDoc.data().value;
+                if (typeof val === 'string' && val) {
+                    cachedStaffPassword = val;
+                    try { await localforage.setItem('cached_staff_password', val); } catch (e) { /* ignore */ }
+                    return val;
+                }
+            }
+        } catch (e) {
+            console.warn('Staff password lookup from Firestore failed; using fallback.', e);
+        }
+        if (cachedStaffPassword) return cachedStaffPassword;
+        try {
+            const cached = await localforage.getItem('cached_staff_password');
+            if (typeof cached === 'string' && cached) { cachedStaffPassword = cached; return cached; }
+        } catch (e) { /* ignore */ }
+        return 'mamaslove2024';
+    }
+
     async function promptStaffLogin() {
-        const passwordDoc = await db.collection(COLLECTIONS.CONFIG).doc('staffPassword').get();
-        const correctPassword = passwordDoc.exists ? passwordDoc.data().value : 'mamaslove2024';
+        // Start resolving the password in the background, but show the popup
+        // immediately so a slow/offline Firestore can never hide the login screen.
+        const passwordPromise = getStaffPassword();
         const { value: passwordGuess } = await Swal.fire({
             html: `
                 <div class="swal-header-bar" style="background: linear-gradient(135deg, #1e40af, #2563eb); padding: 1.25rem; text-align: center; border-radius: inherit;">
@@ -1156,6 +1187,7 @@
             }
             return;
         }
+        const correctPassword = await passwordPromise;
         if (passwordGuess === correctPassword) {
             allElements.mainAppContainer.classList.remove('hidden');
             initializeApp();
@@ -5621,6 +5653,42 @@ async function handleLoadPromoCustomers() {
         navigator.serviceWorker.register('sw.js');
       });
     }
+
+    // OFFLINE MODE: show a banner when there is no internet.
+    // Orders are still saved locally by Firestore persistence and sync automatically.
+    (function setupOfflineBanner() {
+      function ensureBanner() {
+        let banner = document.getElementById('offline-banner');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.id = 'offline-banner';
+          banner.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#b45309;color:#fff;text-align:center;padding:8px 12px;font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.3);';
+          banner.textContent = '⚠ No internet — Offline Mode. Orders are saved and will sync automatically.';
+          document.body.appendChild(banner);
+        }
+        return banner;
+      }
+      function updateBanner() {
+        const banner = ensureBanner();
+        const offline = !navigator.onLine;
+        banner.style.display = offline ? 'block' : 'none';
+        if (offline) {
+          console.info('Offline mode: orders will queue and sync when back online.');
+        } else {
+          // Back online — nudge Firestore to flush its offline queue promptly.
+          if (typeof db !== 'undefined' && db && db.disableNetwork) {
+            db.disableNetwork().then(() => db.enableNetwork()).catch(() => {});
+          }
+        }
+      }
+      window.addEventListener('online', updateBanner);
+      window.addEventListener('offline', updateBanner);
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateBanner);
+      } else {
+        updateBanner();
+      }
+    })();
   </script>
 </body>
 </html>
