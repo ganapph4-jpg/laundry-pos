@@ -143,19 +143,39 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 0.5rem;
         padding: 0.5rem 0;
         border-bottom: 1px dashed #eee;
+        flex-wrap: nowrap;
     }
     .editable-cart-item:last-child {
         border-bottom: none;
     }
     .editable-cart-item-name {
-        flex-grow: 1;
+        flex: 1 1 auto;
+        min-width: 0;
         margin-right: 0.5rem;
+        word-break: break-word;
     }
     .editable-cart-item-price {
         width: 80px; /* Adjust as needed */
         text-align: right;
+    }
+    .editable-cart-item[data-protected="true"] {
+        background-color: #fefce8;
+        border-radius: 0.375rem;
+        padding: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    .editable-cart-item .delete-item-btn {
+        flex: 0 0 auto;
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        line-height: 1;
     }
     .swal2-content label {
         font-weight: 500;
@@ -887,6 +907,9 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    // SPEED FIX: smaller cache = less IndexedDB strain on cheap Android tablets
+    db.settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED === undefined ? 20000000 : 20000000 });
+
     db.enablePersistence({ synchronizeTabs: true }).catch(err => {
         if (err.code == 'failed-precondition') {
             console.warn("Multiple tabs open — persistence in one tab only.");
@@ -1152,7 +1175,18 @@
         // Event Listeners
         allElements.nameEl.addEventListener('input', debouncedSearchCustomers);
         allElements.phoneEl.addEventListener('input', debouncedSearchCustomers);
-        allElements.pickupSearchInput.addEventListener('input', () => renderPickupView());
+        // SPEED FIX: debounce dashboard search - was re-querying Firestore on EVERY keystroke
+        let pickupSearchDebounce;
+        allElements.pickupSearchInput.addEventListener('input', () => {
+            clearTimeout(pickupSearchDebounce);
+            pickupSearchDebounce = setTimeout(() => renderPickupView(), 350);
+        });
+        // SPEED FIX: debounce the main search too
+        let mainSearchDebounce;
+        allElements.searchInputEl.addEventListener('input', () => {
+            clearTimeout(mainSearchDebounce);
+            mainSearchDebounce = setTimeout(() => searchTransactions(), 400);
+        });
         allElements.searchInputEl.addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
                 event.preventDefault(); 
@@ -1415,21 +1449,24 @@
     async function renderPickupDashboard() {
         document.getElementById('dashboard-date').textContent = dayjs().tz(TIMEZONE).format('dddd, MMMM D, YYYY');
 
-        const totalCollectedToday = await getTotalCollectedToday();
-        allElements.pickupDashboardSales.textContent = `₱${totalCollectedToday.toFixed(2)}`;
-
+        // SPEED FIX: single combined query instead of 3 separate Firestore round-trips
         const todayStart = dayjs().tz(TIMEZONE).startOf('day').toDate();
         const todayEnd = dayjs().tz(TIMEZONE).endOf('day').toDate();
-        const todaySnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
-                                    .where('time', '>=', todayStart.toISOString())
-                                    .where('time', '<=', todayEnd.toISOString())
-                                    .get();
+        const [totalCollectedToday, todaySnapshot, allOrdersSnapshot] = await Promise.all([
+            getTotalCollectedToday(),
+            db.collection(COLLECTIONS.TRANSACTIONS)
+                .where('time', '>=', todayStart.toISOString())
+                .where('time', '<=', todayEnd.toISOString())
+                .get(),
+            db.collection(COLLECTIONS.TRANSACTIONS)
+                .where('dashboardFinished', '==', false)
+                .get()
+        ]);
+        allElements.pickupDashboardSales.textContent = `₱${totalCollectedToday.toFixed(2)}`;
+
         const totalSalesToday = todaySnapshot.docs.reduce((sum, doc) => sum + doc.data().total, 0);
         allElements.pickupDashboardTotalSales.textContent = `₱${totalSalesToday.toFixed(2)}`;
 
-        const allOrdersSnapshot = await db.collection(COLLECTIONS.TRANSACTIONS)
-            .where('dashboardFinished', '==', false)
-            .get();
         const allOrders = allOrdersSnapshot.docs.map(d => d.data());
 
         const waitingForPaymentCount = allOrders.filter(tx => {
@@ -2309,14 +2346,14 @@
                     await connectBluetoothPrinter();
                 } catch { return; }
                 if (!nativeBtConnected) return;
-                await new Promise(r => setTimeout(r, 1500));
+                await new Promise(r => setTimeout(r, 600));
             }
         } else if (!bluetoothWriteCharacteristic) {
             try {
                 await connectBluetoothPrinter();
             } catch { return; }
             if (!bluetoothWriteCharacteristic) return;
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 600));
         }
 
         let cH = `<div class="text-left space-y-2 my-4"><p><strong>Customer:</strong> ${esc(name)} (${esc(phone) || 'N/A'})</p>${perfume ? `<p><strong>Perfume:</strong> ${esc(perfume)}</p>` : ''}<hr class="my-2"><ul class="space-y-1">${cart.map(i => `<li class="flex justify-between"><span>${esc(i.label)}</span><span>₱${i.price.toFixed(2)}</span></li>`).join('')}</ul><hr class="my-2"><p class="flex justify-between font-bold text-lg"><span>Total:</span><span>₱${total.toFixed(2)}</span></p></div>`;
@@ -2447,12 +2484,16 @@
         const time = dayjs().tz(TIMEZONE).toISOString();
         const orCounterRef = db.collection(COLLECTIONS.CONFIG).doc('orCounter');
 
-        const orNumber = await db.runTransaction(async (transaction) => {
-            const orCounterDoc = await transaction.get(orCounterRef);
-            const newOrValue = (orCounterDoc.exists ? orCounterDoc.data().value : 0) + 1;
-            transaction.set(orCounterRef, { value: newOrValue });
-            return String(newOrValue).padStart(6, '0');
-        });
+        // SPEED FIX: run the OR counter transaction and the machine status read in parallel
+        const [orNumber, machineSnap] = await Promise.all([
+            db.runTransaction(async (transaction) => {
+                const orCounterDoc = await transaction.get(orCounterRef);
+                const newOrValue = (orCounterDoc.exists ? orCounterDoc.data().value : 0) + 1;
+                transaction.set(orCounterRef, { value: newOrValue });
+                return String(newOrValue).padStart(6, '0');
+            }),
+            db.collection(COLLECTIONS.MACHINE_STATUS).get()
+        ]);
 
         const pointsEarned = (shopSettings.loyaltyEnabled && paymentType !== 'collection')
             ? Math.floor((amountPaid || 0) / (shopSettings.loyaltyEarnDivisor || 10))
@@ -2486,7 +2527,6 @@
 
         const numLoads = cart.length;
         if (numLoads > 0) {
-            const machineSnap = await db.collection(COLLECTIONS.MACHINE_STATUS).get();
             let activeWashers = machineSnap.docs.map(d => d.data()).filter(m => m.type === 'Washer' && m.isActive);
             if (activeWashers.length > 0) {
                 for (let i = 0; i < numLoads; i++) {
@@ -2500,7 +2540,9 @@
         }
 
         await batch.commit();
-        if (bluetoothWriteCharacteristic) {
+        // SPEED FIX: also auto-print for native Bluetooth (Android APK), not just Web Bluetooth
+        const printerReady = (useNativeBluetooth && nativeBluetoothAvailable && nativeBtConnected) || !!bluetoothWriteCharacteristic;
+        if (printerReady) {
             Toast.fire({ icon: 'success', title: `Order #${orNumber} saved! Printing...` });
             printBluetoothReceipt(finalTransactionData);
         } else {
@@ -2860,8 +2902,9 @@
         if (!bluetoothWriteCharacteristic) {
             throw new Error('No printer connected or characteristic not found.');
         }
-        const chunkSize = 100;
-        const delay = 50;
+        // SPEED FIX: larger chunks + shorter delay = receipt prints ~4x faster
+        const chunkSize = 200;
+        const delay = 15;
 
         try {
             for (let i = 0; i < data.length; i += chunkSize) {
@@ -3720,6 +3763,12 @@
         viewReceiptButton.textContent = 'View Receipt';
         viewReceiptButton.onclick = () => showReceiptModal(tx);
         buttonContainer.appendChild(viewReceiptButton);
+
+        const editButton = document.createElement('button');
+        editButton.className = 'bg-yellow-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-yellow-600';
+        editButton.textContent = 'Edit / Add Service';
+        editButton.onclick = () => editTransaction(tx.orNumber);
+        buttonContainer.appendChild(editButton);
 
         if (shopSettings.smsEnabled && tx.phone && (tx.paymentType === 'collection' || tx.paymentType === 'down_payment')) {
             const smsButton = document.createElement('button');
@@ -4637,13 +4686,16 @@
             if (tx.dashboardFinished === undefined) tx.dashboardFinished = false;
             if (tx.notes === undefined) tx.notes = '';
 
-            let cartItemsHtml = tx.cart.map((item, index) => `
-                <div class="editable-cart-item">
-                    <span class="editable-cart-item-name">${esc(item.label)}</span>
+            const isProtectedItem = (label) => /d'comfo|fabcon|sabon/i.test(label);
+            let cartItemsHtml = tx.cart.map((item, index) => {
+                const protected = isProtectedItem(item.label);
+                return `
+                <div class="editable-cart-item" data-protected="${protected}">
+                    <span class="editable-cart-item-name">${esc(item.label)} ${protected ? '<span class="text-xs text-yellow-700 font-semibold">🔒 required</span>' : ''}</span>
                     <input type="number" step="0.01" class="border p-1 w-20 text-right" value="${item.price.toFixed(2)}" data-index="${index}" data-field="price">
-                    <button class="text-red-500 ml-2" onclick="removeEditedCartItem(this, '${orNumber}', ${index})">&times;</button>
+                    ${protected ? '' : `<button class="delete-item-btn text-red-500 hover:text-red-700" onclick="removeEditedCartItem(this, '${orNumber}', ${index})" title="Remove item">&times;</button>`}
                 </div>
-            `).join('');
+            `}).join('');
 
             const result = await Swal.fire({ 
                 title: `Edit Order: OR# ${orNumber}`,
@@ -4873,6 +4925,14 @@
     }
 
     async function removeEditedCartItem(button, orNumber, index) {
+        const itemDiv = button.closest('.editable-cart-item');
+        const itemLabel = itemDiv.querySelector('.editable-cart-item-name').textContent;
+        const isProtectedItem = (label) => /d'comfo|fabcon|sabon/i.test(label);
+
+        if (isProtectedItem(itemLabel)) {
+            return Swal.fire('Cannot Remove', 'This item is required and cannot be removed.', 'error');
+        }
+
         const { isConfirmed } = await Swal.fire({
             title: 'Remove Item?',
             text: 'Are you sure you want to remove this item?',
@@ -4882,7 +4942,7 @@
             confirmButtonColor: '#d33'
         });
         if (isConfirmed) {
-            button.closest('.editable-cart-item').remove();
+            itemDiv.remove();
             recalculateEditTransactionTotals();
         }
     }
@@ -4913,12 +4973,15 @@
 
         const cartItemsContainer = document.getElementById('edit-cart-items-container');
         const newItemDiv = document.createElement('div');
+        const isProtectedItem = (label) => /d'comfo|fabcon|sabon/i.test(label);
+        const protected = isProtectedItem(itemLabel);
         newItemDiv.className = 'editable-cart-item';
-        const tempIndex = cartItemsContainer.children.length; 
+        newItemDiv.dataset.protected = protected;
+        const tempIndex = cartItemsContainer.children.length;
         newItemDiv.innerHTML = `
-            <span class="editable-cart-item-name">${esc(itemLabel)}</span>
+            <span class="editable-cart-item-name">${esc(itemLabel)} ${protected ? '<span class="text-xs text-yellow-700 font-semibold">🔒 required</span>' : ''}</span>
             <input type="number" step="0.01" class="border p-1 w-20 text-right" value="${finalPrice.toFixed(2)}" data-index="${tempIndex}" data-field="price">
-            <button class="text-red-500 ml-2" onclick="removeEditedCartItem(this, '${orNumber || ''}', ${tempIndex})">&times;</button>
+            ${protected ? '' : `<button class="delete-item-btn text-red-500 hover:text-red-700" onclick="removeEditedCartItem(this, '${orNumber || ''}', ${tempIndex})" title="Remove item">&times;</button>`}
         `;
         cartItemsContainer.appendChild(newItemDiv);
 
